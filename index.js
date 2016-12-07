@@ -1,5 +1,6 @@
 var express = require('express');
 var request = require('request');
+var exec = require('child_process').exec;
 
 //  Stored in Environment Variables
 //var clientId = '';
@@ -36,7 +37,27 @@ app.get('/oauth', function(req, res) {
         })
     }
 
-    app.post('/command', function(req, res) {
-        res.send(req);
+    app.post('/command', function(req, result) {
+    	run(req, function(err, res){
+    		if(err){
+    			console.log(err);
+    		}else{
+    			console.log(res);
+    			result.send(res);
+    		}
+    	})
     });
 });
+
+
+function run(command, callback) {
+	exec(command, function(error, stdout, stderr) {
+		if(stderr){
+			return stderr;
+		}else if(stdout){
+			return stdout;
+		}else{
+			return error;
+		}
+	});
+}
