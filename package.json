@@ -1,0 +1,13 @@
+{
+  "name": "slackapp",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "express": "^4.0.0",
+    "request": "^2.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gkrizek/slackapp.git"
+  }
+}
