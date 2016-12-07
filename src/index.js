@@ -33,31 +33,24 @@ app.get('/oauth', function(req, res) {
                 console.log(error);
             } else {
                 res.json(body);
+                console.log(response);
             }
         })
     }
 
     app.post('/command', function(req, result) {
-    	run(req, function(err, res){
-    		if(err){
-    			console.log(err);
-    		}else{
-    			console.log(res);
-    			result.send(res);
-    		}
-    	})
+        var command = "pwd";
+        exec(command, function(error, stdout, stderr) {
+            if(stderr){
+                result.send(stderr);
+            }else if(error){
+                console.log(error);
+                result.send('There was a problem');
+            }else{
+                result.send(stdout);
+            }
+        });
     });
+
+
 });
-
-
-function run(command, callback) {
-	exec(command, function(error, stdout, stderr) {
-		if(stderr){
-			return stderr;
-		}else if(stdout){
-			return stdout;
-		}else{
-			return error;
-		}
-	});
-}
