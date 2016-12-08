@@ -2,6 +2,7 @@ var express = require('express');
 var request = require('request');
 var bodyParser = require('body-parser');
 var exec = require('child_process').exec;
+fs = require('fs');
 
 //  Stored in Environment Variables
 //var clientId = '';
@@ -60,5 +61,28 @@ app.get('/oauth', function(req, res) {
             }
         });
     });
+
+
+app.post('/test', function(req, res) {
+    var token = "";
+    var channel = req.body.channel_id;
+    //console.log(channel);
+    request({
+        url: 'https://slack.com/api/files.info',
+        //qs: {token: token, channel: channel},
+        qs: {token: token, file: 'F3CAHK2MR'},
+        method: 'GET',
+    }, function (error, response, body) {
+        //console.log(error);
+        //console.log(response);
+        var json = JSON.parse(body);
+        console.log(json.file.url_private_download);
+        //var url = json.file.url_private_download;
+        var url = 'https://slack-files.com/T3C89DL30-F3CAHK2MR-5bb1baba51';
+        var r = request(url);
+        r.on('response',  function (res) {res.pipe(fs.createWriteStream('/Users/AppleUser/Desktop/file.js'));
+});
+    })
+});
 
 
