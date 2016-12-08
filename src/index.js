@@ -24,21 +24,27 @@ app.get('/oauth', function(req, res) {
         res.send({"Error": "Looks like we're not getting code."});
         console.log("Looks like we're not getting code.");
     } else {
+        //console.log(req);
         request({
             url: 'https://slack.com/api/oauth.access',
             qs: {code: req.query.code, client_id: clientId, client_secret: clientSecret},
             method: 'GET', 
         }, function (error, response, body) {
+            //console.log(response);
+            //console.log(body);
             if (error) {
                 console.log(error);
             } else {
                 res.json(body);
-                console.log(response);
             }
         })
     }
 
+
+});
+
     app.post('/command', function(req, result) {
+        console.log(req.route);
         var command = "pwd";
         exec(command, function(error, stdout, stderr) {
             if(stderr){
@@ -47,10 +53,11 @@ app.get('/oauth', function(req, res) {
                 console.log(error);
                 result.send('There was a problem');
             }else{
-                result.send(stdout);
+                var test = {"text": "It\'s 80 degrees right now.","attachments":[{"text":"```Partly cloudy today and tomorrow```"}]};
+                //result.send(stdout);
+                result.send(test);
             }
         });
     });
 
 
-});
