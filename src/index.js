@@ -48,13 +48,14 @@ app.get('/oauth', function(req, res) {
         var command = req.body.text;
         exec(command, function(error, stdout, stderr) {
             if(stderr){
-                res.send(stderr);
+                var test = {"text": "Response from Brix:","username": "Brix","attachments":[{"text":"```"+stderr+"```","color": "#ff0000","mrkdwn_in": ["text"]}]};
+                res.send(test);
             }else if(error){
                 console.log(error);
-                res.send('There was a problem');
+                var test = {"text": "Response from Brix:","username": "Brix","attachments":[{"text":"There was a problem","color": "#ff0000"}]};
+                res.send(test);
             }else{
-                var test = {"text": "Response from Brix:","attachments":[{"text":"```"+stdout+"```", "mrkdwn_in": ["text"]}]};
-                //result.send(stdout);
+                var test = {"text": "Response from Brix:","username": "Brix","attachments":[{"text":"```"+stdout+"```","color": "#36a64f","mrkdwn_in": ["text"]}]};
                 res.send(test);
             }
         });
