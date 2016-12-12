@@ -253,7 +253,7 @@ function respond(body, response_url){
 
 /*
     TESTING
-*/
+
 
     function init(text, channel_id, team_id, response_url){
         var filename = text.split(/ (.+)/)[1];
@@ -293,9 +293,5 @@ function respond(body, response_url){
 
         });
     };
-
-
-
-
-
+*/
 
