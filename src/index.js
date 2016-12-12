@@ -52,25 +52,51 @@ app.get('/oauth', function(req, res) {
         var team_id = req.body.team_id;
         var command = text.split(' ')[0];
         switch(command){
-            case "ssh":
+            case "configure":
                 res.send({"text": "Request received..."});
-                execute(text, team_id, response_url);
+                configure(text, team_id, channel_id, response_url);
                 break;
-            case "init":
+            case "krate":
                 res.send({"text": "Request received..."});
-                init(text, channel_id, team_id, response_url);
+                krate(text, team_id, channel_id, response_url);
                 break;
-            case "initsave":
+            case "slip":
                 res.send({"text": "Request received..."});
-                initsave(text, channel_id, team_id, response_url);
+                slip(text, team_id, channel_id, response_url);
+                break;
+            case "edit":
+                res.send({"text": "Request received..."});
+                edit(text, team_id, channel_id, response_url);
+                break;
+            case "exec":
+                res.send({"text": "Request received..."});
+                exec(text, team_id, channel_id, response_url);
+                break;
+            case "help":
+                res.send({"text": "Usage: 'configure' 'krate' 'slip' 'edit' 'exec'"});
                 break;
             default:
-                res.send({"text": "Didn't understand that command"});
+                res.send({"text": "Didn't understand that command. Use 'help' for usage."});
         }
     });
 
+    function configure(text, team_id, channel_id, response_url){
 
-    function execute(text, team_id, response_url){
+    }
+
+    function krate(text, team_id, channel_id, response_url){
+
+    }
+
+    function slip(text, team_id, channel_id, response_url){
+
+    }
+
+    function edit(text, team_id, channel_id, response_url){
+
+    }
+
+    function exec(text, team_id, channel_id, response_url){
         var command = text.split(/ (.+)/)[1];
         exec(command, function(error, stdout, stderr) {
             if(stderr){
@@ -99,6 +125,13 @@ app.get('/oauth', function(req, res) {
             }
         });
     };
+
+
+
+/*
+    TESTING
+*/
+
 
     function init(text, channel_id, team_id, response_url){
         var filename = text.split(/ (.+)/)[1];
