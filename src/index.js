@@ -114,7 +114,7 @@ app.get('/oauth', function(req, res) {
                     }
                     break;
                 case "help":
-                    res.send({"text": "Usage: 'configure' 'krate' 'slip' 'edit' 'exec'"});
+                    res.send({"text": "Usage: /kr [configure,krate,slip,edit,commit,exec,export"});
                     break;
                 default:
                     res.send({"text": "Didn't understand that command. Use 'help' for usage."});
