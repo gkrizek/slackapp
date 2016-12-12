@@ -46,8 +46,8 @@ app.get('/oauth', function(req, res) {
 
     app.post('/command', function(req, res) {
         var slackToken = req.body.token;
-        if (slackToken != verifyToken){
-            req.send('This request doesn\'t seem to be coming from Slack.');
+        if (!slackToken || slackToken != verifyToken){
+            res.send('This request doesn\'t seem to be coming from Slack.');
         }else{
             var text = req.body.text;
             var response_url = req.body.response_url;
