@@ -105,6 +105,14 @@ app.get('/oauth', function(req, res) {
                         commit(text, team_id, channel_id, response_url);
                     }
                     break;
+                case "show":
+                    if(helpCheck == 'help'){
+                        res.send({"text": "Example: /kr show <FILENAME> <LINE_NUMBER>"});
+                    }else{
+                        res.send({"text": "Request received..."});
+                        show(text, team_id, channel_id, response_url);
+                    }
+                    break;
                 case "export":
                     if(helpCheck == 'help'){
                         res.send({"text": "Example: /kr export"});
@@ -205,6 +213,11 @@ app.get('/oauth', function(req, res) {
 
     function commit(text, team_id, channel_id, response_url){
         var body = {"text": "This is the Commit command.","username": "Krate"};
+        response(body, response_url);
+    }
+
+    function commit(text, team_id, channel_id, response_url){
+        var body = {"text": "This is the Show command.","username": "Krate"};
         response(body, response_url);
     }
 
