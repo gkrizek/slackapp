@@ -44,23 +44,57 @@ app.get('/oauth', function(req, res) {
 
 });
 
-    app.post('/command', function(req, res) {
-        console.log(req.body.text);
-        var command = req.body.text;
+    app.post('/krate', function(req, res) {
+        var text = req.body.text;
+        var response_url = req.body.response_url;
+        var team_id = req.body.team_id;
+        var command = text.split(' ')[0];
+        res.send({"text": "Request received..."});
+        switch(command){
+            case "ssh":
+                execute(text, team_id, response_url);
+            case "init":
+                init(text);
+        }
+    });
+
+
+    function execute(text, team_id, response_url){
+        var command = text.split(/ (.+)/)[1]
         exec(command, function(error, stdout, stderr) {
             if(stderr){
                 var test = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"```"+stderr+"```","color": "#ff0000","mrkdwn_in": ["text"]}]};
-                res.send(test);
+                //res.send(test);
             }else if(error){
                 console.log(error);
                 var test = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"There was a problem","color": "#ff0000"}]};
-                res.send(test);
+                //res.send(test);
             }else{
-                var test = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"```"+stdout+"```","color": "#36a64f","mrkdwn_in": ["text"]}]};
-                res.send(test);
+                var body = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"```"+stdout+"```","color": "#36a64f","mrkdwn_in": ["text"]}]};
+                log('sending');
+                request({
+                    url: response_url,
+                    json: true,
+                    headers: {'content-type': 'application/json'},
+                    body: body,
+                    method: 'POST'
+                }, function (error, response, body) {
+                    if (error) {
+                        console.log(error);
+                    } else {
+                        log(body);
+                    }
+                })
+
+
             }
         });
-    });
+    }
+
+    function init(text){
+
+    }
+
 
 
 app.post('/test', function(req, res) {
