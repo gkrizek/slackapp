@@ -54,26 +54,64 @@ app.get('/oauth', function(req, res) {
             var channel_id = req.body.channel_id;
             var team_id = req.body.team_id;
             var command = text.split(' ')[0];
+            //might cause an error if this isn't defined.
+            var helpCheck = text.split(' ')[1];
             switch(command){
                 case "configure":
-                    res.send({"text": "Request received..."});
-                    configure(text, team_id, channel_id, response_url);
+                    if(helpCheck == 'help'){
+                        res.send({"text": "Example: /kr configure <KEY>"});
+                    }else{
+                        res.send({"text": "Request received..."});
+                        configure(text, team_id, channel_id, response_url);
+                    }
                     break;
                 case "krate":
-                    res.send({"text": "Request received..."});
-                    krate(text, team_id, channel_id, response_url);
+                    if(helpCheck == 'help'){
+                        res.send({"text": "Example: /kr krate [start,stop,status] <SLIP_NAME>"});
+                    }else{
+                        res.send({"text": "Request received..."});
+                        krate(text, team_id, channel_id, response_url);
+                    }
                     break;
                 case "slip":
-                    res.send({"text": "Request received..."});
-                    slip(text, team_id, channel_id, response_url);
+                    if(helpCheck == 'help'){
+                        res.send({"text": "Example: /kr slip [list,create,edit,delete] <SLIP_NAME>"});
+                    }else{
+                        res.send({"text": "Request received..."});
+                        slip(text, team_id, channel_id, response_url);
+                    }
                     break;
                 case "edit":
-                    res.send({"text": "Request received..."});
-                    edit(text, team_id, channel_id, response_url);
+                    if(helpCheck == 'help'){
+                        res.send({"text": "Example: /kr edit <FILENAME>"});
+                    }else{
+                        res.send({"text": "Request received..."});
+                        edit(text, team_id, channel_id, response_url);
+                    }
                     break;
                 case "exec":
-                    res.send({"text": "Request received..."});
-                    exec(text, team_id, channel_id, response_url);
+                    if(helpCheck == 'help'){
+                        res.send({"text": "Example: /kr exec <COMMAND>"});
+                    }else{
+                        res.send({"text": "Request received..."});
+                        exec(text, team_id, channel_id, response_url);
+                    }
+                    break;
+                case "commit":
+                    if(helpCheck == 'help'){
+                        res.send({"text": "Example: /kr commit"});
+                    }else{
+                        res.send({"text": "Request received..."});
+                        commit(text, team_id, channel_id, response_url);
+                    }
+                    break;
+                case "export":
+                    if(helpCheck == 'help'){
+                        res.send({"text": "Example: /kr export"});
+                    }else{
+                        res.send({"text": "Request received..."});
+                        export(text, team_id, channel_id, response_url);
+                    }
                     break;
                 case "help":
                     res.send({"text": "Usage: 'configure' 'krate' 'slip' 'edit' 'exec'"});
@@ -154,22 +192,6 @@ app.get('/oauth', function(req, res) {
 
     function exec(text, team_id, channel_id, response_url){
         var command = text.split(/ (.+)/)[1];
-        if(command == 'help'){
-            var body = {"text": "This is the help for the Exec command","username": "Krate"};
-            request({
-                url: response_url,
-                json: true,
-                headers: {'content-type': 'application/json'},
-                body: body,
-                method: 'POST'
-            }, function (error, response, body) {
-                if (error) {
-                    console.log(error);
-                } else {
-                    log(body);
-                }
-            });
-        }else{
             exec(command, function(error, stdout, stderr) {
                 if(stderr){
                     var test = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"```"+stderr+"```","color": "#ff0000","mrkdwn_in": ["text"]}]};
@@ -196,9 +218,41 @@ app.get('/oauth', function(req, res) {
                     });
                 }
             });
-        }
     };
 
+        function commit(text, team_id, channel_id, response_url){
+        var body = {"text": "This is the Commit command.","username": "Krate"};
+            request({
+                url: response_url,
+                json: true,
+                headers: {'content-type': 'application/json'},
+                body: body,
+                method: 'POST'
+            }, function (error, response, body) {
+                if (error) {
+                    console.log(error);
+                } else {
+                    log(body);
+                }
+            });
+        }
+
+    function export(text, team_id, channel_id, response_url){
+        var body = {"text": "This is the Export command.","username": "Krate"};
+            request({
+                url: response_url,
+                json: true,
+                headers: {'content-type': 'application/json'},
+                body: body,
+                method: 'POST'
+            }, function (error, response, body) {
+                if (error) {
+                    console.log(error);
+                } else {
+                    log(body);
+                }
+            });
+    }
 
 
 /*
