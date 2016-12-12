@@ -8,6 +8,7 @@ var log = console.log;
 client_id = process.env.CLIENT_ID;
 client_secret = process.env.CLIENT_SECRET;
 apiKey = process.env.API_KEY;
+verifyToken = process.env.VERIFY_TOKEN;
 
 var app = express();
 
@@ -41,89 +42,161 @@ app.get('/oauth', function(req, res) {
             }
         })
     }
-
-
 });
 
-    app.post('/krate', function(req, res) {
-        var text = req.body.text;
-        var response_url = req.body.response_url;
-        var channel_id = req.body.channel_id;
-        var team_id = req.body.team_id;
-        var command = text.split(' ')[0];
-        switch(command){
-            case "configure":
-                res.send({"text": "Request received..."});
-                configure(text, team_id, channel_id, response_url);
-                break;
-            case "krate":
-                res.send({"text": "Request received..."});
-                krate(text, team_id, channel_id, response_url);
-                break;
-            case "slip":
-                res.send({"text": "Request received..."});
-                slip(text, team_id, channel_id, response_url);
-                break;
-            case "edit":
-                res.send({"text": "Request received..."});
-                edit(text, team_id, channel_id, response_url);
-                break;
-            case "exec":
-                res.send({"text": "Request received..."});
-                exec(text, team_id, channel_id, response_url);
-                break;
-            case "help":
-                res.send({"text": "Usage: 'configure' 'krate' 'slip' 'edit' 'exec'"});
-                break;
-            default:
-                res.send({"text": "Didn't understand that command. Use 'help' for usage."});
+    app.post('/command', function(req, res) {
+        var slackToken = req.body.token;
+        if (slackToken != verifyToken){
+            req.send('This request doesn\'t seem to be coming from Slack.');
+        }else{
+            var text = req.body.text;
+            var response_url = req.body.response_url;
+            var channel_id = req.body.channel_id;
+            var team_id = req.body.team_id;
+            var command = text.split(' ')[0];
+            switch(command){
+                case "configure":
+                    res.send({"text": "Request received..."});
+                    configure(text, team_id, channel_id, response_url);
+                    break;
+                case "krate":
+                    res.send({"text": "Request received..."});
+                    krate(text, team_id, channel_id, response_url);
+                    break;
+                case "slip":
+                    res.send({"text": "Request received..."});
+                    slip(text, team_id, channel_id, response_url);
+                    break;
+                case "edit":
+                    res.send({"text": "Request received..."});
+                    edit(text, team_id, channel_id, response_url);
+                    break;
+                case "exec":
+                    res.send({"text": "Request received..."});
+                    exec(text, team_id, channel_id, response_url);
+                    break;
+                case "help":
+                    res.send({"text": "Usage: 'configure' 'krate' 'slip' 'edit' 'exec'"});
+                    break;
+                default:
+                    res.send({"text": "Didn't understand that command. Use 'help' for usage."});
+            }
         }
     });
 
     function configure(text, team_id, channel_id, response_url){
-
+        var body = {"text": "This is the Configure command.","username": "Krate"};
+            request({
+                url: response_url,
+                json: true,
+                headers: {'content-type': 'application/json'},
+                body: body,
+                method: 'POST'
+            }, function (error, response, body) {
+                if (error) {
+                    console.log(error);
+                } else {
+                    log(body);
+                }
+            });
     }
 
     function krate(text, team_id, channel_id, response_url){
-
+        var body = {"text": "This is the Krate command.","username": "Krate"};
+            request({
+                url: response_url,
+                json: true,
+                headers: {'content-type': 'application/json'},
+                body: body,
+                method: 'POST'
+            }, function (error, response, body) {
+                if (error) {
+                    console.log(error);
+                } else {
+                    log(body);
+                }
+            });
     }
 
     function slip(text, team_id, channel_id, response_url){
-
+        var body = {"text": "This is the Slip command.","username": "Krate"};
+            request({
+                url: response_url,
+                json: true,
+                headers: {'content-type': 'application/json'},
+                body: body,
+                method: 'POST'
+            }, function (error, response, body) {
+                if (error) {
+                    console.log(error);
+                } else {
+                    log(body);
+                }
+            });
     }
 
     function edit(text, team_id, channel_id, response_url){
-
+        var body = {"text": "This is the Edit command.","username": "Krate"};
+            request({
+                url: response_url,
+                json: true,
+                headers: {'content-type': 'application/json'},
+                body: body,
+                method: 'POST'
+            }, function (error, response, body) {
+                if (error) {
+                    console.log(error);
+                } else {
+                    log(body);
+                }
+            });
     }
 
     function exec(text, team_id, channel_id, response_url){
         var command = text.split(/ (.+)/)[1];
-        exec(command, function(error, stdout, stderr) {
-            if(stderr){
-                var test = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"```"+stderr+"```","color": "#ff0000","mrkdwn_in": ["text"]}]};
-                //res.send(test);
-            }else if(error){
-                console.log(error);
-                var test = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"There was a problem","color": "#ff0000"}]};
-                //res.send(test);
-            }else{
-                var body = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"```"+stdout+"```","color": "#36a64f","mrkdwn_in": ["text"]}]};
-                log('sending');
-                request({
-                    url: response_url,
-                    json: true,
-                    headers: {'content-type': 'application/json'},
-                    body: body,
-                    method: 'POST'
-                }, function (error, response, body) {
-                    if (error) {
-                        console.log(error);
-                    } else {
-                        log(body);
-                    }
-                });
-            }
-        });
+        if(command == 'help'){
+            var body = {"text": "This is the help for the Exec command","username": "Krate"};
+            request({
+                url: response_url,
+                json: true,
+                headers: {'content-type': 'application/json'},
+                body: body,
+                method: 'POST'
+            }, function (error, response, body) {
+                if (error) {
+                    console.log(error);
+                } else {
+                    log(body);
+                }
+            });
+        }else{
+            exec(command, function(error, stdout, stderr) {
+                if(stderr){
+                    var test = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"```"+stderr+"```","color": "#ff0000","mrkdwn_in": ["text"]}]};
+                    //res.send(test);
+                }else if(error){
+                    console.log(error);
+                    var test = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"There was a problem","color": "#ff0000"}]};
+                    //res.send(test);
+                }else{
+                    var body = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"```"+stdout+"```","color": "#36a64f","mrkdwn_in": ["text"]}]};
+                    log('sending');
+                    request({
+                        url: response_url,
+                        json: true,
+                        headers: {'content-type': 'application/json'},
+                        body: body,
+                        method: 'POST'
+                    }, function (error, response, body) {
+                        if (error) {
+                            console.log(error);
+                        } else {
+                            log(body);
+                        }
+                    });
+                }
+            });
+        }
     };
 
 
