@@ -196,7 +196,14 @@ app.get('/oauth', function(req, res) {
 
     function exec(text, team_id, channel_id, response_url){
         var command = text.split(/ (.+)/)[1];
-            exec(command, function(error, stdout, stderr) {
+        request({
+            url: 'localhost:1515/exec',
+            json: true,
+            headers: {'content-type': 'application/json'},
+            body: {'command': command, 'response_url': response_url},
+            method: 'POST'
+        });
+            /*exec(command, function(error, stdout, stderr) {
                 if(stderr){
                     var body = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"```"+stderr+"```","color": "#ff0000","mrkdwn_in": ["text"]}]};
                     response(body, response_url);
@@ -208,7 +215,7 @@ app.get('/oauth', function(req, res) {
                     var body = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"```"+stdout+"```","color": "#36a64f","mrkdwn_in": ["text"]}]};
                     response(body, response_url);
                 }
-            });
+            });*/
     };
 
     function commit(text, team_id, channel_id, response_url){
