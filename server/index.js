@@ -13,14 +13,13 @@ app.listen(PORT, function () {
     console.log("Krate listening on port " + PORT);
 });
 
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
 
 app.get('/', function(req, res) {
     res.send('Container is Working');
 });
 
 app.post('/exec', function(req, res){
-	log(req);
 	var command = req.body.command;
 	var response_url = req.body.response_url;
     exec(command, function(error, stdout, stderr) {
@@ -54,7 +53,7 @@ app.post('/export', function(req, res){
 
 });
 
-function respond(body, response_url){
+function response(body, response_url){
     request({
         url: response_url,
         json: true,

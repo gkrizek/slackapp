@@ -118,7 +118,7 @@ app.get('/oauth', function(req, res) {
                         res.send({"text": "Example: /kr export"});
                     }else{
                         res.send({"text": "Request received..."});
-                        export(text, team_id, channel_id, response_url);
+                        exportCmd(text, team_id, channel_id, response_url);
                     }
                     break;
                 case "help":
@@ -223,12 +223,12 @@ app.get('/oauth', function(req, res) {
         response(body, response_url);
     }
 
-    function commit(text, team_id, channel_id, response_url){
+    function show(text, team_id, channel_id, response_url){
         var body = {"text": "This is the Show command.","username": "Krate"};
         response(body, response_url);
     }
 
-    function export(text, team_id, channel_id, response_url){
+    function exportCmd(text, team_id, channel_id, response_url){
         var body = {"text": "This is the Export command.","username": "Krate"};
         response(body, response_url);
     }
@@ -254,7 +254,6 @@ function respond(body, response_url){
 /*
     TESTING
 */
-
 
     function init(text, channel_id, team_id, response_url){
         var filename = text.split(/ (.+)/)[1];
