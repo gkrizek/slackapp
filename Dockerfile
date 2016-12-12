@@ -14,7 +14,7 @@ COPY package.json /etc/slackapp
 RUN npm install
 
 # Bundle app source
-COPY src/ /etc/slackapp
+COPY server/ /etc/slackapp
 
-EXPOSE 8080
+EXPOSE 1515
 CMD [ "npm", "start" ]
