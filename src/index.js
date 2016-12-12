@@ -15,13 +15,13 @@ var app = express();
 const PORT=8080;
 
 app.listen(PORT, function () {
-    console.log("Example app listening on port " + PORT);
+    console.log("Krate API listening on port " + PORT);
 });
 
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.get('/', function(req, res) {
-    res.send('Slack App is Working');
+    res.send('Krate App is Working');
 });
 
 app.get('/oauth', function(req, res) {
