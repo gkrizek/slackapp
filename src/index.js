@@ -51,14 +51,21 @@ app.get('/oauth', function(req, res) {
         var channel_id = req.body.channel_id;
         var team_id = req.body.team_id;
         var command = text.split(' ')[0];
-        res.send({"text": "Request received..."});
         switch(command){
             case "ssh":
+                res.send({"text": "Request received..."});
                 execute(text, team_id, response_url);
+                break;
             case "init":
+                res.send({"text": "Request received..."});
                 init(text, channel_id, team_id, response_url);
+                break;
             case "initsave":
+                res.send({"text": "Request received..."});
                 initsave(text, channel_id, team_id, response_url);
+                break;
+            default:
+                res.send({"text": "Didn't understand that command"});
         }
     });
 
@@ -91,7 +98,7 @@ app.get('/oauth', function(req, res) {
                 });
             }
         });
-    }
+    };
 
     function init(text, channel_id, team_id, response_url){
         var filename = text.split(/ (.+)/)[1];
@@ -104,7 +111,7 @@ app.get('/oauth', function(req, res) {
         }, function (error, response, body) {
             //log(JSON.parse(body));
         });
-    }
+    };
 
     function initsave(text, channel_id, team_id, response_url){
         var token = apiKey;
@@ -130,7 +137,7 @@ app.get('/oauth', function(req, res) {
             });
 
         });
-    }
+    };
 
 
     function notifySuccess(response_url){
@@ -148,7 +155,7 @@ app.get('/oauth', function(req, res) {
                 log(body);
             }
         });
-    }
+    };
 
 
 
