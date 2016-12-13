@@ -5,10 +5,10 @@ var exec = require('child_process').exec;
 fs = require('fs');
 var log = console.log;
 var mongoose = require('mongoose');
-mongoose.connect('mongodb://localhost:27017/krate');
+//mongoose.connect('mongodb://localhost:27017/krate');
 
-client_id = process.env.CLIENT_ID;
-client_secret = process.env.CLIENT_SECRET;
+clientId = process.env.CLIENT_ID;
+clientSecret = process.env.CLIENT_SECRET;
 apiKey = process.env.API_KEY;
 verifyToken = process.env.VERIFY_TOKEN;
 
@@ -277,20 +277,6 @@ function respond(body, response_url){
 
 /*
     TESTING
-
-
-    function init(text, channel_id, team_id, response_url){
-        var filename = text.split(/ (.+)/)[1];
-        var file = "project_name: "+filename+"\ngit_url: GIT_URL";
-        var token = apiKey;
-        request({
-            url: 'https://slack.com/api/files.upload',
-            qs: {token: token, filename: filename, channels: channel_id, content: file},
-            method: 'POST',
-        }, function (error, response, body) {
-            //log(JSON.parse(body));
-        });
-    };
 
     function initsave(text, channel_id, team_id, response_url){
         var token = apiKey;
