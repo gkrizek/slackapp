@@ -59,6 +59,23 @@ app.post('/edit', function(req, res){
 });
 
 app.post('/commit', function(req, res){
+    var url = req.body.url_private;
+    var file = req.body.file;
+    var response_url = req.body.response_url;
+    var token = req.body.token;
+    request({
+        url: url,
+        method: 'GET',
+        headers: {'Authorization': "Bearer "+token}
+    }, function (error, response, body) {
+        fs.writeFile('./'+file, body, function(err){
+            if(err){
+                log(err);
+            }
+            var body = {"text": file+" was successfully saved.", "username": "Krate"};
+            respond(body, response_url);
+        });
+    });
 
 });
 
@@ -85,3 +102,29 @@ function respond(body, response_url){
         }
     });
 }
+
+    function initsave(text, channel_id, team_id, response_url){
+        var token = apiKey;
+        request({
+            url: 'https://slack.com/api/files.list',
+            qs: {token: token, channel: channel_id},
+            method: 'POST',
+        }, function (error, response, body) {
+            var result = JSON.parse(body);
+            var url = result.files[0].url_private;
+
+            request({
+                url: url,
+                method: 'GET',
+                headers: {'Authorization': "Bearer "+token}
+            }, function (error, response, body) {
+                fs.writeFile('../'+result.files[0].name, body, function(err){
+                    if(err){
+                        log(err);
+                    }
+                    //notifySuccess(response_url);
+                });
+            });
+
+        });
+    };

@@ -270,8 +270,27 @@ app.post('/create-account', bodyParser.json(), function(req, res){
                 respond(body, response_url);
                 break;
             case "file":
-                var body = {"text": "Commiting file "+file+"...","username": "Krate"};
-                respond(body, response_url);
+                request({
+                    url: 'https://slack.com/api/files.list';
+                    qs: {token: apiKey, channel: channel_id},
+                    method: 'POST'
+                }, function(err, response, body){
+                    var result = JSON.parse(body);
+                    var downUrl = result.files[0].url_private;
+                    request({
+                        url: 'http://localhost:1515/exec',
+                        json: true,
+                        headers: {'content-type': 'application/json'},
+                        body: {'url': downUrl, 'file': file, 'token': apiKey,'response_url': response_url},
+                        method: 'POST'
+                    }, function (error, response, body) {
+                        if (error) {
+                            console.log(error);
+                        } else {
+                            log(body);
+                        }
+                    });
+                })
                 break;
             default:
                 var body = {"text": "Unknown command. Use [help] for usage.", "username": "Krate"};
@@ -305,35 +324,4 @@ function respond(body, response_url){
         }
     });
 };
-
-
-/*
-    TESTING
-
-    function initsave(text, channel_id, team_id, response_url){
-        var token = apiKey;
-        request({
-            url: 'https://slack.com/api/files.list',
-            qs: {token: token, channel: channel_id},
-            method: 'POST',
-        }, function (error, response, body) {
-            var result = JSON.parse(body);
-            var url = result.files[0].url_private;
-
-            request({
-                url: url,
-                method: 'GET',
-                headers: {'Authorization': "Bearer "+token}
-            }, function (error, response, body) {
-                fs.writeFile('../'+result.files[0].name, body, function(err){
-                    if(err){
-                        log(err);
-                    }
-                    //notifySuccess(response_url);
-                });
-            });
-
-        });
-    };
-*/
 
