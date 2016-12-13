@@ -4,8 +4,9 @@ var bodyParser = require('body-parser');
 var exec = require('child_process').exec;
 fs = require('fs');
 var log = console.log;
-var mongoose = require('mongoose');
-//mongoose.connect('mongodb://localhost:27017/krate');
+var Account = require('./mongoose.js');
+var Containers = require('./mongoose.js');
+var Slips = require('./mongoose.js');
 
 clientId = process.env.CLIENT_ID;
 clientSecret = process.env.CLIENT_SECRET;
