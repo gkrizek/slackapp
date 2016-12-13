@@ -42,3 +42,9 @@ var slipsSchema = new Schema({
 })
 var Slips = mongoose.model('Slips', slipsSchema);
 module.exports = Slips;
+
+
+containersSchema.pre('save', function(next) {
+  this.startTime = new Date();
+  next();
+});

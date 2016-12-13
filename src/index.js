@@ -47,6 +47,10 @@ app.get('/oauth', function(req, res) {
     }
 });
 
+app.post('/create-user', bodyParser.json(), function(req, res){
+    log(req.body);
+})
+
     app.post('/command', function(req, res) {
         var slackToken = req.body.token;
         if (!slackToken || slackToken != verifyToken){
@@ -145,7 +149,22 @@ app.get('/oauth', function(req, res) {
                 respond(body, response_url);
                 break;
             case "start":
-                var body = {"text": "Starting Krate...", "username": "Krate"};
+                var slip = text.split(' ')[2];
+                //var body = {"text": "Starting Krate...", "username": "Krate"};
+                var containerId = 'AasdBfSaC234as1';
+                var newCont = Containers({
+                    id: 'ABCS123',
+                    containerId: containerId,
+                    host: '10.9.9.2',
+                    slip: slip,
+                    teamId: team_id,
+                    channelId: channel_id,
+                });
+                newCont.save(function(err){
+                    if(err) throw err;
+                    log('Created!');
+                });
+                var body = {"text": "Starting Krate "+containerId+"...", "username": "Krate"};
                 respond(body, response_url);
                 break;
             case "stop":
