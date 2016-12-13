@@ -4,6 +4,8 @@ var bodyParser = require('body-parser');
 var exec = require('child_process').exec;
 fs = require('fs');
 var log = console.log;
+var mongoose = require('mongoose');
+mongoose.connect('mongodb://localhost:27017/krate');
 
 client_id = process.env.CLIENT_ID;
 client_secret = process.env.CLIENT_SECRET;
@@ -54,7 +56,6 @@ app.get('/oauth', function(req, res) {
             var channel_id = req.body.channel_id;
             var team_id = req.body.team_id;
             var command = text.split(' ')[0];
-            //might cause an error if this isn't defined.
             var helpCheck = text.split(' ')[1];
             switch(command){
                 case "configure":
@@ -94,12 +95,12 @@ app.get('/oauth', function(req, res) {
                         res.send({"text": "Example: /kr exec <COMMAND>"});
                     }else{
                         res.send({"text": "Request received..."});
-                        exec(text, team_id, channel_id, response_url);
+                        execute(text, team_id, channel_id, response_url);
                     }
                     break;
                 case "commit":
                     if(helpCheck == 'help'){
-                        res.send({"text": "Example: /kr commit"});
+                        res.send({"text": "Example: /kr commit [slip,file] <FILENAME>"});
                     }else{
                         res.send({"text": "Request received..."});
                         commit(text, team_id, channel_id, response_url);
@@ -122,7 +123,7 @@ app.get('/oauth', function(req, res) {
                     }
                     break;
                 case "help":
-                    res.send({"text": "Usage: /kr [configure,krate,slip,edit,commit,exec,export"});
+                    res.send({"text": "Usage: /kr [configure, krate, slip, edit, commit, show, exec, export]"});
                     break;
                 default:
                     res.send({"text": "Didn't understand that command. Use 'help' for usage."});
@@ -132,7 +133,7 @@ app.get('/oauth', function(req, res) {
 
     function configure(text, team_id, channel_id, response_url){
         var body = {"text": "This is the Configure command.","username": "Krate"};
-        response(body, response_url);
+        respond(body, response_url);
     }
 
     function krate(text, team_id, channel_id, response_url){
@@ -147,7 +148,7 @@ app.get('/oauth', function(req, res) {
                 respond(body, response_url);
                 break;
             case "stop":
-                var body = {"text": "Stoping Krate...", "username": "Krate"};
+                var body = {"text": "If you really want to stop "+text.split(' ')[2]+" then call '/kr krate stop-force "+text.split(' ')[2]+"'. You might also want to export before stopping.", "username": "Krate"};
                 respond(body, response_url);
                 break;
             case "attach":
@@ -156,6 +157,10 @@ app.get('/oauth', function(req, res) {
                 break;
             case "detach":
                 var body = {"text": "Detaching Krate...", "username": "Krate"};
+                respond(body, response_url);
+                break;
+            case "stop-force":
+                var body = {"text": "Stoping Krate...", "username": "Krate"};
                 respond(body, response_url);
                 break;
             default:
@@ -172,14 +177,26 @@ app.get('/oauth', function(req, res) {
                 respond(body, response_url);
                 break;
             case "create":
-                var body = {"text": "Creating Slip...", "username": "Krate"};
-                respond(body, response_url);
+                var filename = text.split(' ')[2];
+                var file = "{\nproject_name: "+filename+",\ngit_url: GIT_URL\n}";
+                var token = apiKey;
+                request({
+                    url: 'https://slack.com/api/files.upload',
+                    qs: {token: token, filename: filename, channels: channel_id, content: file},
+                    method: 'POST',
+                }, function (error, response, body) {
+                    //log(JSON.parse(body));
+                });
                 break;
             case "edit":
                 var body = {"text": "Editing Slip...", "username": "Krate"};
                 respond(body, response_url);
                 break;
             case "delete":
+                var body = {"text": "If you really want to delete "+text.split(' ')[2]+" then call '/kr slip delete-force "+text.split(' ')[2]+"'", "username": "Krate"};
+                respond(body, response_url);
+                break;
+            case "delete-force":
                 var body = {"text": "Deleting Slip...", "username": "Krate"};
                 respond(body, response_url);
                 break;
@@ -191,47 +208,54 @@ app.get('/oauth', function(req, res) {
 
     function edit(text, team_id, channel_id, response_url){
         var body = {"text": "This is the Edit command.","username": "Krate"};
-        response(body, response_url);
-    }
+        respond(body, response_url);
+    };
 
-    function exec(text, team_id, channel_id, response_url){
+    function execute(text, team_id, channel_id, response_url){
         var command = text.split(/ (.+)/)[1];
         request({
-            url: 'localhost:1515/exec',
+            url: 'http://localhost:1515/exec',
             json: true,
             headers: {'content-type': 'application/json'},
             body: {'command': command, 'response_url': response_url},
             method: 'POST'
+        }, function (error, response, body) {
+            if (error) {
+                console.log(error);
+            } else {
+                log(body);
+            }
         });
-            /*exec(command, function(error, stdout, stderr) {
-                if(stderr){
-                    var body = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"```"+stderr+"```","color": "#ff0000","mrkdwn_in": ["text"]}]};
-                    response(body, response_url);
-                }else if(error){
-                    console.log(error);
-                    var body = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"There was a problem","color": "#ff0000"}]};
-                    response(body, response_url);
-                }else{
-                    var body = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"```"+stdout+"```","color": "#36a64f","mrkdwn_in": ["text"]}]};
-                    response(body, response_url);
-                }
-            });*/
     };
 
     function commit(text, team_id, channel_id, response_url){
-        var body = {"text": "This is the Commit command.","username": "Krate"};
-        response(body, response_url);
-    }
+        var command = text.split(' ')[1];
+        var file = text.split(' ')[2];
+        //maybe have the option to not specify slip or file, and in that case, just commit most recent file in history. But how would you know what it goes to?
+        switch(command){
+            case "slip":
+                var body = {"text": "Commiting slip "+file+"...","username": "Krate"};
+                respond(body, response_url);
+                break;
+            case "file":
+                var body = {"text": "Commiting file "+file+"...","username": "Krate"};
+                respond(body, response_url);
+                break;
+            default:
+                var body = {"text": "Unknown command. Use [help] for usage.", "username": "Krate"};
+                respond(body, response_url);
+        }
+    };
 
     function show(text, team_id, channel_id, response_url){
         var body = {"text": "This is the Show command.","username": "Krate"};
-        response(body, response_url);
-    }
+        respond(body, response_url);
+    };
 
     function exportCmd(text, team_id, channel_id, response_url){
         var body = {"text": "This is the Export command.","username": "Krate"};
-        response(body, response_url);
-    }
+        respond(body, response_url);
+    };
 
 
 function respond(body, response_url){
@@ -245,10 +269,10 @@ function respond(body, response_url){
         if (error) {
             log(error);
         } else {
-            log(body);
+            //log(body);
         }
     });
-}
+};
 
 
 /*

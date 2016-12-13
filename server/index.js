@@ -25,14 +25,17 @@ app.post('/exec', function(req, res){
     exec(command, function(error, stdout, stderr) {
         if(stderr){
             var body = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"```"+stderr+"```","color": "#ff0000","mrkdwn_in": ["text"]}]};
-            response(body, response_url);
+            respond(body, response_url);
+            res.send('OK');
         }else if(error){
             console.log(error);
             var body = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"There was a problem","color": "#ff0000"}]};
-            response(body, response_url);
+            respond(body, response_url);
+            res.send('OK');
         }else{
         	var body = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"```"+stdout+"```","color": "#36a64f","mrkdwn_in": ["text"]}]};
-            response(body, response_url);
+            respond(body, response_url);
+            res.send('OK');
         }
     });
 });
@@ -53,7 +56,7 @@ app.post('/export', function(req, res){
 
 });
 
-function response(body, response_url){
+function respond(body, response_url){
     request({
         url: response_url,
         json: true,

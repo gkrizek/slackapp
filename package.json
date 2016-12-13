@@ -5,7 +5,8 @@
   "dependencies": {
     "express": "^4.0.0",
     "request": "^2.0.0",
-    "body-parser": "^1.0.0"
+    "body-parser": "^1.0.0",
+    "mongoose": "^4.7.0"
   },
   "scripts": {
     "start": "node index.js"
