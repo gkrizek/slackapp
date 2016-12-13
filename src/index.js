@@ -47,7 +47,7 @@ app.get('/oauth', function(req, res) {
     }
 });
 
-app.post('/create-user', bodyParser.json(), function(req, res){
+app.post('/create-account', bodyParser.json(), function(req, res){
     log(req.body);
 })
 
@@ -227,8 +227,20 @@ app.post('/create-user', bodyParser.json(), function(req, res){
     }
 
     function edit(text, team_id, channel_id, response_url){
-        var body = {"text": "This is the Edit command.","username": "Krate"};
-        respond(body, response_url);
+        var file = text.split(' ')[1];
+        request({
+            url: 'http://localhost:1515/edit',
+            json: true,
+            headers: {'content-type': 'application/json'},
+            body: {'file': file, 'channel_id': channel_id, 'token': apiKey},
+            method: 'POST'
+        }, function (error, response, body) {
+            if (error) {
+                console.log(error);
+            } else {
+                log(body);
+            }
+        });
     };
 
     function execute(text, team_id, channel_id, response_url){

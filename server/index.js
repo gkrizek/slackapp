@@ -41,7 +41,21 @@ app.post('/exec', function(req, res){
 });
 
 app.post('/edit', function(req, res){
-
+    var filename = req.body.file;
+    var channel_id = req.body.channel_id;
+    var token = req.body.token;
+    fs.readFile('./'+filename, 'utf8', function(err,data){
+        if(err){
+            return log(err);
+        }
+        request({
+            url: 'https://slack.com/api/files.upload',
+            qs: {token: token, filename: filename, channels: channel_id, content: data},
+            method: 'POST',
+        }, function (error, response, body) {
+            log(JSON.parse(body));
+        });
+    });
 });
 
 app.post('/commit', function(req, res){
