@@ -271,7 +271,7 @@ app.post('/create-account', bodyParser.json(), function(req, res){
                 break;
             case "file":
                 request({
-                    url: 'https://slack.com/api/files.list';
+                    url: 'https://slack.com/api/files.list',
                     qs: {token: apiKey, channel: channel_id},
                     method: 'POST'
                 }, function(err, response, body){
@@ -299,10 +299,11 @@ app.post('/create-account', bodyParser.json(), function(req, res){
     };
 
     function show(text, team_id, channel_id, response_url){
+        //Need to be able to handle small files. Maybe have the user specify the range. IE 10-70.
         var file = text.split(' ')[1];
         var line = text.split(' ')[2];
         var start = line - 25;
-        var end = line + 25;        
+        var end = (line - 0) + 25;        
         request({
             url: 'http://localhost:1515/show',
             json: true,
