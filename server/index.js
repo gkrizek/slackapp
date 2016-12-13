@@ -80,7 +80,27 @@ app.post('/commit', function(req, res){
 });
 
 app.post('/show', function(req, res){
-
+    var start = req.body.start;
+    var end = req.body.end;
+    var file = req.body.file;
+    var response_url = req.body.response_url;
+    var command = "sed -n '"+start+","+end+"p "+file;
+    exec(command, function(error, stdout, stderr) {
+        if(stderr){
+            var body = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"```"+stderr+"```","color": "#ff0000","mrkdwn_in": ["text"]}]};
+            respond(body, response_url);
+            res.send('OK');
+        }else if(error){
+            console.log(error);
+            var body = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"There was a problem","color": "#ff0000"}]};
+            respond(body, response_url);
+            res.send('OK');
+        }else{
+            var body = {"text": "Response from Krate:","username": "Krate","attachments":[{"text":"```"+stdout+"```","color": "#36a64f","mrkdwn_in": ["text"]}]};
+            respond(body, response_url);
+            res.send('OK');
+        }
+    });
 });
 
 app.post('/export', function(req, res){

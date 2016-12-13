@@ -278,7 +278,7 @@ app.post('/create-account', bodyParser.json(), function(req, res){
                     var result = JSON.parse(body);
                     var downUrl = result.files[0].url_private;
                     request({
-                        url: 'http://localhost:1515/exec',
+                        url: 'http://localhost:1515/commit',
                         json: true,
                         headers: {'content-type': 'application/json'},
                         body: {'url': downUrl, 'file': file, 'token': apiKey,'response_url': response_url},
@@ -299,8 +299,23 @@ app.post('/create-account', bodyParser.json(), function(req, res){
     };
 
     function show(text, team_id, channel_id, response_url){
-        var body = {"text": "This is the Show command.","username": "Krate"};
-        respond(body, response_url);
+        var file = text.split(' ')[1];
+        var line = text.split(' ')[2];
+        var start = line - 25;
+        var end = line + 25;        
+        request({
+            url: 'http://localhost:1515/show',
+            json: true,
+            headers: {'content-type': 'application/json'},
+            body: {'file': file, 'start': start, 'end': end, 'response_url': response_url},
+            method: 'POST'
+        }, function (error, response, body) {
+            if (error) {
+                console.log(error);
+            } else {
+                log(body);
+            }
+        });    
     };
 
     function exportCmd(text, team_id, channel_id, response_url){
