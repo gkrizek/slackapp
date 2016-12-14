@@ -11,7 +11,6 @@ var Slips = require('./mongoose.js').Slips;
 
 clientId = process.env.CLIENT_ID;
 clientSecret = process.env.CLIENT_SECRET;
-apiKey = process.env.API_KEY;
 verifyToken = process.env.VERIFY_TOKEN;
 
 var app = express();
@@ -43,27 +42,39 @@ app.get('/oauth', function(req, res) {
                 console.log(error);
             } else {
                 //Check if they have added the app before. If they have use old doc and update status of it
-                var id = randomstring.generate();
-                var oauth = body.token;
-                var team_id = body.team_id;
-                var newAccount = Account({
-                  _id: id,
-                  teamId: team_id,
-                  active: true,
-                  accepted: false,
-                  oauth: oauth,
-                  plan: 0,
-                  maxAllowedCont: 0,
-                  runningCont: 0,
-                  containers: [],
-                  slips: [],
-                  createdAt: new Date()
-                });
-                newAccount.save();
-                res.send('OK');
+                var doesExist = Account.count({'teamId': body.team_id});
+                if(doesExist > 0){
+                    //updated already existsing document to Active.
+                }else{
+                    var id = randomstring.generate();
+                    var oauth = body.token;
+                    var team_id = body.team_id;
+                    var newAccount = Account({
+                      _id: id,
+                      teamId: team_id,
+                      active: true,
+                      accepted: false,
+                      krateToken: null,
+                      oauth: oauth,
+                      plan: 0,
+                      maxAllowedCont: 0,
+                      runningCont: 0,
+                      containers: [],
+                      slips: [],
+                      createdAt: new Date()
+                    });
+                    newAccount.save();
+                }
+                res.redirect('https://slack.com');
             }
         })
     }
+});
+
+app.post('/message_action', function(req, res){
+    //Handle Interactive Messages
+    //https://api.slack.com/docs/message-buttons
+    log(req);
 });
 
     app.post('/command', function(req, res) {
@@ -211,8 +222,9 @@ app.get('/oauth', function(req, res) {
                 respond(body, response_url);
                 break;
             case "stop":
+                var cont = text.split(' ')[2];
                 //maybe use the Slack decision buttons here
-                var body = {"text": "Are you sure you want to stop "+text.split(' ')[2]+"?", "username": "Krate"};
+                var body = {"text": "Are you sure you want to stop "+cont+"?", "attachments": [{"text": "You might want to export your code changes first.", "fallback": "Won't Delete the container.", "callback_id": "stop_cont", "color": "#ab32a4", "attachment_type": "default", "actions": [{"name": "yes", "text": "Obliterate it.", "type": "button", "value", cont},{"name": "no", "text": "Don't touch it!", "type": "button", "value", cont}]}]}
                 respond(body, response_url);
                 break;
             case "attach":
@@ -223,10 +235,6 @@ app.get('/oauth', function(req, res) {
                 var body = {"text": "Detaching Krate...", "username": "Krate"};
                 respond(body, response_url);
                 break;
-            case "stop-force":
-                var body = {"text": "Stoping Krate...", "username": "Krate"};
-                respond(body, response_url);
-                break;
             default:
                 var body = {"text": "Unknown command. Use [help] for usage.", "username": "Krate"};
                 respond(body, response_url);
@@ -235,6 +243,7 @@ app.get('/oauth', function(req, res) {
 
     function slip(text, team_id, channel_id, response_url, userDoc){
         var command = text.split(' ')[1];
+        //Maybe need a RENAME command
         switch(command){
             case "list":
                 if(userDoc.slips.length == 0){
@@ -250,22 +259,36 @@ app.get('/oauth', function(req, res) {
                 respond(body, response_url);
                 break;
             case "create":
+                var id = randomstring.generate();
                 var filename = text.split(' ')[2];
-                var file = "{\nproject_name: "+filename+",\ngit_url: GIT_URL\n}";
-                var token = apiKey;
+                var s3 = 'https://s3.amazonaws.com/slips/'+team_id+'/'+filename+'.json';
+                var file = "{\n\tproject_name: "+filename+",\n\tgit_url: <git-url>,\n\tgit_branch: <git-branch>\n}";
+                var token = userDoc.oauth;
                 request({
                     url: 'https://slack.com/api/files.upload',
                     qs: {token: token, filename: filename, channels: channel_id, content: file},
                     method: 'POST',
                 }, function (error, response, body) {
-                    //log(JSON.parse(body));
+                    if(error){
+                        log(error);
+                    }
                 });
+                var newSlip = Slips({
+                    _id: id,
+                    configName: filename,
+                    url: s3,
+                    teamId: team_id,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                });
+                newSlip.save();
                 break;
             case "edit":
                 var body = {"text": "Editing Slip...", "username": "Krate"};
                 respond(body, response_url);
                 break;
             case "delete":
+            //Use buttons here instead
                 var body = {"text": "If you really want to delete "+text.split(' ')[2]+" then call '/kr slip delete-force "+text.split(' ')[2]+"'", "username": "Krate"};
                 respond(body, response_url);
                 break;
@@ -285,13 +308,11 @@ app.get('/oauth', function(req, res) {
             url: 'http://localhost:1515/edit',
             json: true,
             headers: {'content-type': 'application/json'},
-            body: {'file': file, 'channel_id': channel_id, 'token': apiKey},
+            body: {'file': file, 'channel_id': channel_id, 'token': userDoc.oauth},
             method: 'POST'
         }, function (error, response, body) {
             if (error) {
-                console.log(error);
-            } else {
-                log(body);
+                log(error);
             }
         });
     };
@@ -306,9 +327,7 @@ app.get('/oauth', function(req, res) {
             method: 'POST'
         }, function (error, response, body) {
             if (error) {
-                console.log(error);
-            } else {
-                log(body);
+                log(error);
             }
         });
     };
@@ -325,7 +344,7 @@ app.get('/oauth', function(req, res) {
             case "file":
                 request({
                     url: 'https://slack.com/api/files.list',
-                    qs: {token: apiKey, channel: channel_id},
+                    qs: {token: userDoc.oauth, channel: channel_id},
                     method: 'POST'
                 }, function(err, response, body){
                     var result = JSON.parse(body);
@@ -336,13 +355,11 @@ app.get('/oauth', function(req, res) {
                         url: 'http://localhost:1515/commit',
                         json: true,
                         headers: {'content-type': 'application/json'},
-                        body: {'url': downUrl, 'file': file, 'token': apiKey,'response_url': response_url},
+                        body: {'url': downUrl, 'file': file, 'token': userDoc.oauth,'response_url': response_url},
                         method: 'POST'
                     }, function (error, response, body) {
                         if (error) {
-                            console.log(error);
-                        } else {
-                            //log(body);
+                            log(error);
                         }
                     });
                 })
@@ -367,9 +384,7 @@ app.get('/oauth', function(req, res) {
             method: 'POST'
         }, function (error, response, body) {
             if (error) {
-                console.log(error);
-            } else {
-                log(body);
+                log(error);
             }
         });    
     };
@@ -390,8 +405,6 @@ function respond(body, response_url){
     }, function (error, response, body) {
         if (error) {
             log(error);
-        } else {
-            //log(body);
         }
     });
 };

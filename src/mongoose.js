@@ -7,6 +7,7 @@ var accountSchema = new Schema({
   teamId: String,
   active: Boolean,
   accepted: Boolean,
+  krateToken: String,
   oauth: String,
   plan: Number,
   maxAllowedCont: Number,
@@ -34,7 +35,6 @@ var slipsSchema = new Schema({
   configName: String,
   url: String,
   teamId: String,
-  channelId: String,
   createdAt: Date,
   updatedAt: Date
 })
