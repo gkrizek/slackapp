@@ -1,13 +1,13 @@
 var mongoose = require('mongoose');
-mongoose.connect('mongodb://localhost:27017/krate');
+//mongoose.connect('mongodb://localhost:27017/krate');
 var Schema = mongoose.Schema;
 
 var accountSchema = new Schema({
   _id: String,
   teamId: String,
   active: Boolean,
-  password: String,
-  auth: { token: String, verified: Boolean},
+  accepted: Boolean,
+  oauth: String,
   plan: Number,
   maxAllowedCont: Number,
   runningCont: Number,
