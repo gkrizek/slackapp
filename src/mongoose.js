@@ -1,9 +1,9 @@
 var mongoose = require('mongoose');
-//mongoose.connect('mongodb://localhost:27017/krate');
+mongoose.connect('mongodb://localhost:27017/krate');
 var Schema = mongoose.Schema;
 
 var accountSchema = new Schema({
-  id: String,
+  _id: String,
   teamId: String,
   active: Boolean,
   password: String,
@@ -17,10 +17,9 @@ var accountSchema = new Schema({
   lastUsed: Date
 });
 var Account = mongoose.model('Account', accountSchema);
-module.exports = Account;
 
 var containersSchema = new Schema({
-  id: String,
+  _id: String,
   containerId: String,
   host: String,
   slip: String,
@@ -29,10 +28,9 @@ var containersSchema = new Schema({
   startTime: Date
 });
 var Containers = mongoose.model('Containers', containersSchema);
-module.exports = Containers;
 
 var slipsSchema = new Schema({
-  id: String,
+  _id: String,
   configName: String,
   url: String,
   teamId: String,
@@ -41,8 +39,8 @@ var slipsSchema = new Schema({
   updatedAt: Date
 })
 var Slips = mongoose.model('Slips', slipsSchema);
-module.exports = Slips;
 
+module.exports = {Account, Containers, Slips};
 
 containersSchema.pre('save', function(next) {
   this.startTime = new Date();

@@ -4,9 +4,9 @@ var bodyParser = require('body-parser');
 var exec = require('child_process').exec;
 fs = require('fs');
 var log = console.log;
-var Account = require('./mongoose.js');
-var Containers = require('./mongoose.js');
-var Slips = require('./mongoose.js');
+var Account = require('./mongoose.js').Account;
+var Containers = require('./mongoose.js').Containers;
+var Slips = require('./mongoose.js').Slips;
 
 clientId = process.env.CLIENT_ID;
 clientSecret = process.env.CLIENT_SECRET;
@@ -48,7 +48,21 @@ app.get('/oauth', function(req, res) {
 });
 
 app.post('/create-account', bodyParser.json(), function(req, res){
-    log(req.body);
+    var item = Account({
+      _id: 'REAL',
+      teamId: 'T3D6U95CL',
+      active: true,
+      password: 'password',
+      auth: { token: 'test', verified: false},
+      plan: 1,
+      maxAllowedCont: 2,
+      runningCont: 0,
+      containers: [],
+      slips: [],
+      createdAt: new Date(),
+      lastUsed: new Date()
+    });
+    item.save();
 })
 
     app.post('/command', function(req, res) {
@@ -59,6 +73,7 @@ app.post('/create-account', bodyParser.json(), function(req, res){
             var text = req.body.text;
             var response_url = req.body.response_url;
             var channel_id = req.body.channel_id;
+            //D3D6U9604
             var team_id = req.body.team_id;
             var command = text.split(' ')[0];
             var helpCheck = text.split(' ')[1];
@@ -145,29 +160,45 @@ app.post('/create-account', bodyParser.json(), function(req, res){
         var command = text.split(' ')[1];
         switch(command){
             case "status":
-                var body = {"text": "This is the Krate Status.", "username": "Krate"};
-                respond(body, response_url);
+                Account.findOne({'teamId': team_id}, 'containers', function(err, res){
+                    if(err){
+                        log(err);
+                        var body = {"text": "There was a problem processing your request.", "username": "Krate"};
+                        respond(body, response_url);
+                    }else{
+                        if(res.containers.length == 0){
+                            var body = {"text": "You don't have any containers running in the channel.", "username": "Krate"};
+                        }else{
+                            //check if any containers match channel. If so, return info.
+                            var body = {"text": "This is the Krate Status.", "username": "Krate"};
+                        }
+                        respond(body, response_url);
+                    }
+                });
                 break;
             case "start":
                 var slip = text.split(' ')[2];
                 //var body = {"text": "Starting Krate...", "username": "Krate"};
-                var containerId = 'AasdBfSaC234as1';
+                var containerId = 'ssdfasdfadfad';
                 var newCont = Containers({
-                    id: 'ABCS123',
+                    _id: 'ABCSesdfe123',
                     containerId: containerId,
                     host: '10.9.9.2',
                     slip: slip,
                     teamId: team_id,
-                    channelId: channel_id,
+                    channelId: channel_id
                 });
                 newCont.save(function(err){
-                    if(err) throw err;
+                    if(err) {
+                        log(err);
+                    }
                     log('Created!');
                 });
                 var body = {"text": "Starting Krate "+containerId+"...", "username": "Krate"};
                 respond(body, response_url);
                 break;
             case "stop":
+                //maybe use the Slack decision buttons here
                 var body = {"text": "If you really want to stop "+text.split(' ')[2]+" then call '/kr krate stop-force "+text.split(' ')[2]+"'. You might also want to export before stopping.", "username": "Krate"};
                 respond(body, response_url);
                 break;
@@ -193,8 +224,21 @@ app.post('/create-account', bodyParser.json(), function(req, res){
         var command = text.split(' ')[1];
         switch(command){
             case "list":
-                var body = {"text": "Listing Slips...", "username": "Krate"};
-                respond(body, response_url);
+                Account.findOne({'teamId': team_id}, 'slips', function(err, res){
+                    if(err){
+                        log(err);
+                        var body = {"text": "There was a problem processing your request.", "username": "Krate"};
+                        respond(body, response_url);
+                    }else{
+                        if(res.slips.length == 0){
+                            var body = {"text": "You don't have any slips. Create one with '/kr slip create <NAME>'", "username": "Krate"};
+                        }else{
+                            //Return all the slips
+                            var body = {"text": "Listing Slips...", "username": "Krate"};
+                        }
+                        respond(body, response_url);
+                    }
+                });
                 break;
             case "create":
                 var filename = text.split(' ')[2];
@@ -276,7 +320,9 @@ app.post('/create-account', bodyParser.json(), function(req, res){
                     method: 'POST'
                 }, function(err, response, body){
                     var result = JSON.parse(body);
+                    log(result);
                     var downUrl = result.files[0].url_private;
+                    log(downUrl);
                     request({
                         url: 'http://localhost:1515/commit',
                         json: true,
@@ -287,7 +333,7 @@ app.post('/create-account', bodyParser.json(), function(req, res){
                         if (error) {
                             console.log(error);
                         } else {
-                            log(body);
+                            //log(body);
                         }
                     });
                 })

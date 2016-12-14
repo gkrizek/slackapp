@@ -15,6 +15,6 @@ RUN npm install
 
 # Bundle app source
 COPY server/ /etc/slackapp
-
 EXPOSE 1515
+
 CMD [ "npm", "start" ]

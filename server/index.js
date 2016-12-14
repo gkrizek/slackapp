@@ -19,8 +19,6 @@ app.get('/', function(req, res) {
     res.send('Container is Working');
 });
 
-app.get('')
-
 app.post('/exec', function(req, res){
 	var command = req.body.command;
 	var response_url = req.body.response_url;
@@ -62,12 +60,14 @@ app.post('/edit', function(req, res){
 
 app.post('/commit', function(req, res){
     var url = req.body.url;
+    //var url = 'https://files-origin.slack.com/files-pri/T3D6U95CL-F3F5ZV162/dockerfile';
     var file = req.body.file;
     var response_url = req.body.response_url;
     var token = req.body.token;
+    var headers = {"Authorization": "Bearer "+token};
     request({
         url: url,
-        headers: {'Authorization': 'Bearer '+token},
+        headers: headers,
         method: 'GET'
     }, function (error, response, body) {
         fs.writeFile('./'+file, body, function(err){
