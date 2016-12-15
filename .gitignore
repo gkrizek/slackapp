@@ -1,4 +1,5 @@
 .DS_Store
+config.txt
 # Logs
 logs
 *.log

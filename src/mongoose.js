@@ -1,10 +1,11 @@
 var mongoose = require('mongoose');
-//mongoose.connect('mongodb://localhost:27017/krate');
+mongoose.connect('mongodb://localhost:27017/krate');
 var Schema = mongoose.Schema;
 
 var accountSchema = new Schema({
   _id: String,
   teamId: String,
+  teamName: String,
   active: Boolean,
   accepted: Boolean,
   krateToken: String,

@@ -8,6 +8,8 @@ var log = console.log;
 var Account = require('./mongoose.js').Account;
 var Containers = require('./mongoose.js').Containers;
 var Slips = require('./mongoose.js').Slips;
+var userDoc;
+
 
 clientId = process.env.CLIENT_ID;
 clientSecret = process.env.CLIENT_SECRET;
@@ -46,12 +48,15 @@ app.get('/oauth', function(req, res) {
                 if(doesExist > 0){
                     //updated already existsing document to Active.
                 }else{
+                    var result = JSON.parse(body);
                     var id = randomstring.generate();
-                    var oauth = body.token;
-                    var team_id = body.team_id;
+                    var oauth = result.access_token;
+                    var team_name = result.team_name;
+                    var team_id = result.team_id;
                     var newAccount = Account({
                       _id: id,
                       teamId: team_id,
+                      teamName: team_name,
                       active: true,
                       accepted: false,
                       krateToken: null,
@@ -72,9 +77,31 @@ app.get('/oauth', function(req, res) {
 });
 
 app.post('/message_action', function(req, res){
-    //Handle Interactive Messages
-    //https://api.slack.com/docs/message-buttons
-    log(req);
+    var result = JSON.parse(req.body.payload);
+    var callback_id = result.callback_id;
+    var action = result.actions[0].name;
+    var value = result.actions[0].value;
+    var channel_id = result.channel.id;
+    var response_url = result.response_url;
+    var slackToken = result.token;
+    if (!slackToken || slackToken != verifyToken){
+        res.send('This request doesn\'t seem to be coming from Slack.');
+    }else{
+        switch(callback_id){
+            case "stop_cont":
+                if(action == "yes"){
+                    stopCont(value, channel_id, response_url);
+                }else{
+                    res.send({"text": "Leaving krate '"+value+"' alone.", "username": "Krate"});
+                }
+                break;
+            case "delete_slip":
+                res.send({"text": "ok"})
+                break;
+            default:
+                res.send({"text": "I didn't understand that option.", "username": "Krate"});
+        }
+    }
 });
 
     app.post('/command', function(req, res) {
@@ -88,86 +115,93 @@ app.post('/message_action', function(req, res){
             var team_id = req.body.team_id;
             var command = text.split(' ')[0];
             var helpCheck = text.split(' ')[1];
-            var userDoc = Account.findOne({'teamId': team_id});
-            if(userDoc.accepted == false && command != 'configure'){
-                var body = {"text": "It doesn't look like you have configured Slack with your Krate account. Please create an account at https://krate.sh and run the '/kr configure' command.", "username": "Krate"};
-                respond(body, response_url);
-            }else if(userDoc.active == false){
-                var body = {"text": "It looks like your account is not active. Please login to your account at https://krate.sh/login to find out why.", "username": "Krate"};
-                respond(body, response_url);
-            }else{
-                switch(command){
-                    case "configure":
-                        if(helpCheck == 'help'){
-                            res.send({"text": "Example: /kr configure <KEY>"});
-                        }else{
-                            res.send({"text": "Request received..."});
-                            configure(text, team_id, channel_id, response_url, userDoc);
+            Account.findOne({'teamId': team_id}, function(err, data){
+                //what if it can't find it? ie data null?
+                if (err){
+                    log(err);
+                }else{
+                    var userDoc = data;
+                    if(userDoc.accepted == false && command != 'configure'){
+                        var body = {"text": "It doesn't look like you have configured Slack with your Krate account. Please create an account at https://krate.sh and run the '/kr configure' command.", "username": "Krate"};
+                        res.send(body);
+                    }else if(userDoc.active == false){
+                        var body = {"text": "It looks like your account is not active. Please login to your account at https://krate.sh/login to find out why.", "username": "Krate"};
+                        res.send(body);
+                    }else{
+                        switch(command){
+                            case "configure":
+                                if(helpCheck == 'help'){
+                                    res.send({"text": "Example: /kr configure <KEY>"});
+                                }else{
+                                    res.send({"text": "Request received..."});
+                                    configure(text, team_id, channel_id, response_url, userDoc);
+                                }
+                                break;
+                            case "krate":
+                                if(helpCheck == 'help'){
+                                    res.send({"text": "Example: /kr krate [start,stop,status,attach,detach] <SLIP_NAME>"});
+                                }else{
+                                    res.send({"text": "Request received..."});
+                                    krate(text, team_id, channel_id, response_url, userDoc);
+                                }
+                                break;
+                            case "slip":
+                                if(helpCheck == 'help'){
+                                    res.send({"text": "Example: /kr slip [list,create,edit,delete] <SLIP_NAME>"});
+                                }else{
+                                    res.send({"text": "Request received..."});
+                                    slip(text, team_id, channel_id, response_url, userDoc);
+                                }
+                                break;
+                            case "edit":
+                                if(helpCheck == 'help'){
+                                    res.send({"text": "Example: /kr edit <FILENAME>"});
+                                }else{
+                                    res.send({"text": "Request received..."});
+                                    edit(text, team_id, channel_id, response_url, userDoc);
+                                }
+                                break;
+                            case "exec":
+                                if(helpCheck == 'help'){
+                                    res.send({"text": "Example: /kr exec <COMMAND>"});
+                                }else{
+                                    res.send({"text": "Request received..."});
+                                    execute(text, team_id, channel_id, response_url, userDoc);
+                                }
+                                break;
+                            case "commit":
+                                if(helpCheck == 'help'){
+                                    res.send({"text": "Example: /kr commit [slip,file] <FILENAME>"});
+                                }else{
+                                    res.send({"text": "Request received..."});
+                                    commit(text, team_id, channel_id, response_url, userDoc);
+                                }
+                                break;
+                            case "show":
+                                if(helpCheck == 'help'){
+                                    res.send({"text": "Example: /kr show <FILENAME> <LINE_NUMBER>"});
+                                }else{
+                                    res.send({"text": "Request received..."});
+                                    show(text, team_id, channel_id, response_url, userDoc);
+                                }
+                                break;
+                            case "export":
+                                if(helpCheck == 'help'){
+                                    res.send({"text": "Example: /kr export"});
+                                }else{
+                                    res.send({"text": "Request received..."});
+                                    exportCmd(text, team_id, channel_id, response_url, userDoc);
+                                }
+                                break;
+                            case "help":
+                                res.send({"text": "Usage: /kr [configure, krate, slip, edit, commit, show, exec, export]"});
+                                break;
+                            default:
+                                res.send({"text": "Didn't understand that command. Use 'help' for usage."});
                         }
-                        break;
-                    case "krate":
-                        if(helpCheck == 'help'){
-                            res.send({"text": "Example: /kr krate [start,stop,status,attach,detach] <SLIP_NAME>"});
-                        }else{
-                            res.send({"text": "Request received..."});
-                            krate(text, team_id, channel_id, response_url, userDoc);
-                        }
-                        break;
-                    case "slip":
-                        if(helpCheck == 'help'){
-                            res.send({"text": "Example: /kr slip [list,create,edit,delete] <SLIP_NAME>"});
-                        }else{
-                            res.send({"text": "Request received..."});
-                            slip(text, team_id, channel_id, response_url, userDoc);
-                        }
-                        break;
-                    case "edit":
-                        if(helpCheck == 'help'){
-                            res.send({"text": "Example: /kr edit <FILENAME>"});
-                        }else{
-                            res.send({"text": "Request received..."});
-                            edit(text, team_id, channel_id, response_url, userDoc);
-                        }
-                        break;
-                    case "exec":
-                        if(helpCheck == 'help'){
-                            res.send({"text": "Example: /kr exec <COMMAND>"});
-                        }else{
-                            res.send({"text": "Request received..."});
-                            execute(text, team_id, channel_id, response_url, userDoc);
-                        }
-                        break;
-                    case "commit":
-                        if(helpCheck == 'help'){
-                            res.send({"text": "Example: /kr commit [slip,file] <FILENAME>"});
-                        }else{
-                            res.send({"text": "Request received..."});
-                            commit(text, team_id, channel_id, response_url, userDoc);
-                        }
-                        break;
-                    case "show":
-                        if(helpCheck == 'help'){
-                            res.send({"text": "Example: /kr show <FILENAME> <LINE_NUMBER>"});
-                        }else{
-                            res.send({"text": "Request received..."});
-                            show(text, team_id, channel_id, response_url, userDoc);
-                        }
-                        break;
-                    case "export":
-                        if(helpCheck == 'help'){
-                            res.send({"text": "Example: /kr export"});
-                        }else{
-                            res.send({"text": "Request received..."});
-                            exportCmd(text, team_id, channel_id, response_url, userDoc);
-                        }
-                        break;
-                    case "help":
-                        res.send({"text": "Usage: /kr [configure, krate, slip, edit, commit, show, exec, export]"});
-                        break;
-                    default:
-                        res.send({"text": "Didn't understand that command. Use 'help' for usage."});
+                    }
                 }
-            }
+            });
         }
     });
 
@@ -182,15 +216,10 @@ app.post('/message_action', function(req, res){
         var command = text.split(' ')[1];
         switch(command){
             case "status":
-                Account.findOne({'teamId': team_id}, 'containers', function(err, res){
-                    if(err){
-                        log(err);
-                        var body = {"text": "There was a problem processing your request.", "username": "Krate"};
-                        respond(body, response_url);
-                    }else{
-                        var length = res.container.length;
+                        var length = userDoc.containers.length;
                         if(length == 0){
                             var body = {"text": "You don't have any containers running in the channel.", "username": "Krate"};
+                            respond(body, response_url);
                         }else{
                             for(var i = 0; i < length; i++){
                                 if(res.container[i].channel == channel_id){
@@ -199,33 +228,40 @@ app.post('/message_action', function(req, res){
                                 }else{
                                     var body = {"text": "You don't have any containers running in the channel.", "username": "Krate"};
                                 }
+                                respond(body, response_url);
                             }
-                            respond(body, response_url);
                         }
-                    }
-                });
                 break;
             case "start":
                 var slip = text.split(' ')[2];
                 var id = randomstring.generate();
                 var containerId = randomstring.generate(10);
-                var newCont = Containers({
-                    _id: id,
-                    containerId: containerId,
-                    host: '10.9.9.2',
-                    slip: slip,
-                    teamId: team_id,
-                    channelId: channel_id
-                });
-                newCont.save();
-                var body = {"text": "Starting Krate "+containerId+"...", "username": "Krate"};
-                respond(body, response_url);
+                if(!slip){
+                    var body = {"text": "You must specify a slip to boot with. Example: '/kr krate start bear'", "username": "Krate"};
+                    respond(body, response_url);
+                }else{
+                    var newCont = Containers({
+                        _id: id,
+                        containerId: containerId,
+                        host: '10.9.9.2',
+                        slip: slip,
+                        teamId: team_id,
+                        channelId: channel_id
+                    });
+                    newCont.save();
+                    var body = {"text": "Starting Krate "+containerId+"...", "username": "Krate"};
+                    respond(body, response_url);
+                }
                 break;
             case "stop":
                 var cont = text.split(' ')[2];
-                //maybe use the Slack decision buttons here
-                var body = {"text": "Are you sure you want to stop "+cont+"?", "attachments": [{"text": "You might want to export your code changes first.", "fallback": "Won't Delete the container.", "callback_id": "stop_cont", "color": "#ab32a4", "attachment_type": "default", "actions": [{"name": "yes", "text": "Obliterate it.", "type": "button", "value", cont},{"name": "no", "text": "Don't touch it!", "type": "button", "value", cont}]}]}
-                respond(body, response_url);
+                if(!cont){
+                    var body = {"text": "You must specify a container to stop. Use '/kr krate status' to find running containers", "username": "Krate"};
+                    respond(body, response_url);             
+                }else{
+                    var body = {"text": "Are you sure you want to stop "+cont+"?", "attachments": [{"text": "You might want to export your code changes first.", "fallback": "Won't Delete the container.", "callback_id": "stop_cont", "color": "#ab32a4", "attachment_type": "default", "actions": [{"name": "yes", "text": "Obliterate it.", "type": "button", "value": cont},{"name": "no", "text": "Don't touch it!", "type": "button", "value": cont}]}]}
+                    respond(body, response_url);
+                }
                 break;
             case "attach":
                 var body = {"text": "Attaching Krate...", "username": "Krate"};
@@ -244,6 +280,7 @@ app.post('/message_action', function(req, res){
     function slip(text, team_id, channel_id, response_url, userDoc){
         var command = text.split(' ')[1];
         //Maybe need a RENAME command
+        log(userDoc)
         switch(command){
             case "list":
                 if(userDoc.slips.length == 0){
@@ -391,6 +428,12 @@ app.post('/message_action', function(req, res){
 
     function exportCmd(text, team_id, channel_id, response_url, userDoc){
         var body = {"text": "This is the Export command.","username": "Krate"};
+        respond(body, response_url);
+    };
+
+    function stopCont(containerId, channelId, response_url){
+        //check if container matches channel then stop and delete records
+        var body = {"text": "Stopping container "+containerId, "username": "Krate"};
         respond(body, response_url);
     };
 
