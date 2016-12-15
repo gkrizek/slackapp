@@ -8,7 +8,6 @@ var log = console.log;
 var Account = require('./mongoose.js').Account;
 var Containers = require('./mongoose.js').Containers;
 var Slips = require('./mongoose.js').Slips;
-var userDoc;
 
 
 clientId = process.env.CLIENT_ID;
@@ -90,7 +89,8 @@ app.post('/message_action', function(req, res){
         switch(callback_id){
             case "stop_cont":
                 if(action == "yes"){
-                    stopCont(value, channel_id, response_url);
+                    stopCont(value, channel_id, response_url);  //need CB?
+                    res.send({"text": "Stopping krate '"+value+"'.", "username": "Krate"});
                 }else{
                     res.send({"text": "Leaving krate '"+value+"' alone.", "username": "Krate"});
                 }
@@ -104,7 +104,7 @@ app.post('/message_action', function(req, res){
     }
 });
 
-    app.post('/command', function(req, res) {
+app.post('/command', function(req, res) {
         var slackToken = req.body.token;
         if (!slackToken || slackToken != verifyToken){
             res.send('This request doesn\'t seem to be coming from Slack.');
@@ -203,34 +203,45 @@ app.post('/message_action', function(req, res){
                 }
             });
         }
-    });
+});
 
     function configure(text, team_id, channel_id, response_url, userDoc){
         var krateToken = text.split(' ')[1];
         //Call to main site to link their Slack Team to their Krate account
-        var body = {"text": "This is the Configure command.","username": "Krate"};
-        respond(body, response_url);
+        if(userDoc.accepted == true){
+            var body = {"text": "You have already configured your Slack team with you Krate account.","username": "Krate"};
+            respond(body, response_url);
+        }else{
+            if(!krateToken){
+                var body = {"text": "You must pass a token. Example: '/kr configure abc123def456","username": "Krate"};
+                respond(body, response_url);
+            }else{
+                var body = {"text": "This is the Configure command with "+krateToken,"username": "Krate"};
+                respond(body, response_url);
+            }
+        }
     }
 
     function krate(text, team_id, channel_id, response_url, userDoc){
         var command = text.split(' ')[1];
         switch(command){
             case "status":
-                        var length = userDoc.containers.length;
-                        if(length == 0){
-                            var body = {"text": "You don't have any containers running in the channel.", "username": "Krate"};
-                            respond(body, response_url);
+                var length = userDoc.containers.length;
+                if(length == 0){
+                    var body = {"text": "You don't have any containers running in the channel.", "username": "Krate"};
+                    respond(body, response_url);
+                }else{
+                    //this should be the most effieicnt, but I could possibly look in the containers collection matching channel id.
+                    for(var i = 0; i < length; i++){
+                        if(userDoc.containers[i].channel == channel_id){
+                            var body = {"text": "Current running container: "+userDoc.containers[i].name, "username": "Krate"};
+                            break;
                         }else{
-                            for(var i = 0; i < length; i++){
-                                if(res.container[i].channel == channel_id){
-                                    var body = {"text": "Current running container: "+res.container[i].name, "username": "Krate"};
-                                    break;
-                                }else{
-                                    var body = {"text": "You don't have any containers running in the channel.", "username": "Krate"};
-                                }
-                                respond(body, response_url);
-                            }
+                            var body = {"text": "You don't have any containers running in the channel.", "username": "Krate"};
                         }
+                        respond(body, response_url);
+                    }
+                }
                 break;
             case "start":
                 var slip = text.split(' ')[2];
@@ -248,9 +259,13 @@ app.post('/message_action', function(req, res){
                         teamId: team_id,
                         channelId: channel_id
                     });
-                    newCont.save();
-                    var body = {"text": "Starting Krate "+containerId+"...", "username": "Krate"};
-                    respond(body, response_url);
+                    newCont.save(function(err){
+                        Account.findOneAndUpdate({'teamId': team_id}, {'containers': [{'channelId': channel_id, 'containerId': containerId}]}, function(err, data){
+                            if (err) log(err);
+                            var body = {"text": "Starting Krate "+containerId+"...", "username": "Krate"};
+                            respond(body, response_url);
+                        });
+                    });
                 }
                 break;
             case "stop":
@@ -433,8 +448,12 @@ app.post('/message_action', function(req, res){
 
     function stopCont(containerId, channelId, response_url){
         //check if container matches channel then stop and delete records
-        var body = {"text": "Stopping container "+containerId, "username": "Krate"};
-        respond(body, response_url);
+        log("deleting containter");
+    };
+
+    function deleteSlip(slip, channelId, response_url){
+        //check if container matches channel then stop and delete records
+        log("deleting slip");
     };
 
 
