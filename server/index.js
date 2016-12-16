@@ -106,7 +106,8 @@ app.post('/show', function(req, res){
 });
 
 app.post('/export', function(req, res){
-
+        var body = {"text": "This is the Export command. on the container","username": "Krate"};
+        respond(body, response_url);
 });
 
 function respond(body, response_url){

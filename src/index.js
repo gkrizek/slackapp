@@ -93,13 +93,18 @@ app.post('/message_action', function(req, res){
             case "stop_cont":
                 if(action == "yes"){
                     stopCont(value, team_id, channel_id, response_url);  //need CB?
-                    res.send({"text": "Stopping krate '"+value+"'.", "username": "Krate"});
+                    res.send({"text": "Stopping krate '"+value+"'...", "username": "Krate"});
                 }else{
                     res.send({"text": "Leaving krate '"+value+"' alone.", "username": "Krate"});
                 }
                 break;
             case "delete_slip":
-                res.send({"text": "ok"})
+                if(action == "yes"){
+                    deleteSlip(value, team_id, channel_id, response_url);  //need CB?
+                    res.send({"text": "Deleting '"+value+"'...", "username": "Krate"});
+                }else{
+                    res.send({"text": "Leaving slip '"+value+"' alone.", "username": "Krate"});                    
+                }
                 break;
             default:
                 res.send({"text": "I didn't understand that option.", "username": "Krate"});
@@ -447,7 +452,7 @@ app.post('/command', function(req, res) {
                 if (error) {
                     log(error);
                 }else{
-                    Slips.findOneAndUpdate({'configName': file}, {'updatedAt': new Date()});
+                    Slips.findOneAndUpdate({'configName': file, 'teamId' team_id`}, {'updatedAt': new Date()});
                 }
             });
         });
@@ -488,19 +493,21 @@ app.post('/command', function(req, res) {
                     method: 'POST'
                 }, function(err, response, body){
                     var result = JSON.parse(body);
-                    log(result);
                     var downUrl = result.files[0].url_private;
-                    log(downUrl);
-                    request({
-                        url: 'http://localhost:1515/commit',
-                        json: true,
-                        headers: {'content-type': 'application/json'},
-                        body: {'url': downUrl, 'file': file, 'token': userDoc.oauth,'response_url': response_url},
-                        method: 'POST'
-                    }, function (error, response, body) {
-                        if (error) {
-                            log(error);
-                        }
+                    Containers.findOne({'channelId': channel_id}, function(err, data){
+                        var host = data.host;
+                        request({
+                            //url: 'http://'+host+'/commit',
+                            url: 'http://localhost:1515/commit',
+                            json: true,
+                            headers: {'content-type': 'application/json'},
+                            body: {'url': downUrl, 'file': file, 'token': userDoc.oauth,'response_url': response_url},
+                            method: 'POST'
+                        }, function (error, response, body) {
+                            if (error) {
+                                log(error);
+                            }
+                        });
                     });
                 })
                 break;
@@ -515,44 +522,66 @@ app.post('/command', function(req, res) {
         var file = text.split(' ')[1];
         var line = text.split(' ')[2];
         var start = line - 25;
-        var end = (line - 0) + 25;        
-        request({
-            url: 'http://localhost:1515/show',
-            json: true,
-            headers: {'content-type': 'application/json'},
-            body: {'file': file, 'start': start, 'end': end, 'response_url': response_url},
-            method: 'POST'
-        }, function (error, response, body) {
-            if (error) {
-                log(error);
-            }
-        });    
+        var end = (line - 0) + 25;
+        //If no container exists does this report an error or report nothing?
+        Containers.findOne({'channelId': channel_id}, function(err, data){
+            var host = data.host;       
+            request({
+                //url: 'http://'+host+'/show',
+                url: 'http://localhost:1515/show',
+                json: true,
+                headers: {'content-type': 'application/json'},
+                body: {'file': file, 'start': start, 'end': end, 'response_url': response_url},
+                method: 'POST'
+            }, function (error, response, body) {
+                if (error) {
+                    log(error);
+                }
+            });
+        });
     };
 
     function exportCmd(text, team_id, channel_id, response_url, userDoc){
-        var body = {"text": "This is the Export command.","username": "Krate"};
-        respond(body, response_url);
+        Containers.findOne({'channelId': channel_id}, function(err, data){
+            var host = data.host;       
+            request({
+                //url: 'http://'+host+'/export',
+                url: 'http://localhost:1515/export',
+                json: true,
+                headers: {'content-type': 'application/json'},
+                body: {'container': data.containerId, 'response_url': response_url},
+                method: 'POST'
+            }, function (error, response, body) {
+                if (error) {
+                    log(error);
+                }
+            });
+        });
     };
 
-    function stopCont(containerId, teamId, channelId, response_url){
-        // If the message_action body contains teamId, we need to pass it.
-        Containers.findOne({'containerId': containerId}, function(err, data){
+    function stopCont(containerId, team_id, channel_id, response_url){
+        Containers.findOne({'containerId': container_id}, function(err, data){
             if(err) log(err);
-            if(data.channelId != channelId){
+            if(data.channelId != channel_id){
                 log('This container is not in the channel requested');
             }else{
-                Account.findOneAndUpdate({'teamId': teamId}, {$pull: {'containers': {'containerId': containerId}}}, function(err, data){
-                    Containers.findOne({'containerId': containerId}).remove().exec();
-                    var body = {"text": "Stopping Container "+containerId, "username": "Krate"};
+                Account.findOneAndUpdate({'teamId': teamId}, {$pull: {'containers': {'containerId': container_id}}}, function(err, data){
+                    if(err) log(err);
+                    Containers.findOne({'containerId': container_id}).remove().exec();
+                    var body = {"text": "Stopping Container "+container_id, "username": "Krate"};
                     respond(body, response_url);
                 })
             }
         });
     };
 
-    function deleteSlip(slip, channelId, response_url){
-        //check if container matches channel then stop and delete records
-        log("deleting slip");
+    function deleteSlip(slip, team_id, channelId, response_url){
+        Account.findOneAndUpdate({'teamId': teamId}, {$pull: {'slips': slip}}, function(err, data){
+            if(err) log(err);
+            Slips.findOne({'configName': slip, 'teamId': team_id}).remove().exec();
+            var body = {"text": "Deleted slip "+slip, "username": "Krate"};
+            respond(body, response_url);
+        })
     };
 
 
