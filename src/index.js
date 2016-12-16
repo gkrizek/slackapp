@@ -80,6 +80,7 @@ app.post('/message_action', function(req, res){
     var callback_id = result.callback_id;
     var action = result.actions[0].name;
     var value = result.actions[0].value;
+    var team_id = result.team.id;
     var channel_id = result.channel.id;
     var response_url = result.response_url;
     var slackToken = result.token;
@@ -89,7 +90,7 @@ app.post('/message_action', function(req, res){
         switch(callback_id){
             case "stop_cont":
                 if(action == "yes"){
-                    stopCont(value, channel_id, response_url);  //need CB?
+                    stopCont(value, team_id, channel_id, response_url);  //need CB?
                     res.send({"text": "Stopping krate '"+value+"'.", "username": "Krate"});
                 }else{
                     res.send({"text": "Leaving krate '"+value+"' alone.", "username": "Krate"});
@@ -259,12 +260,16 @@ app.post('/command', function(req, res) {
                         teamId: team_id,
                         channelId: channel_id
                     });
-                    newCont.save(function(err){
-                        Account.findOneAndUpdate({'teamId': team_id}, {'containers': [{'channelId': channel_id, 'containerId': containerId}]}, function(err, data){
-                            if (err) log(err);
-                            var body = {"text": "Starting Krate "+containerId+"...", "username": "Krate"};
-                            respond(body, response_url);
-                        });
+                    newCont.save(function(err){ 
+                        if(err){
+                            log(err);
+                        }else{
+                            Account.findOneAndUpdate({'teamId': team_id}, {'containers': [{'channelId': channel_id, 'containerId': containerId}]}, function(err, data){
+                                if (err) log(err);
+                                var body = {"text": "Starting Krate "+containerId+"...", "username": "Krate"};
+                                respond(body, response_url);
+                            });
+                        }
                     });
                 }
                 break;
@@ -446,9 +451,20 @@ app.post('/command', function(req, res) {
         respond(body, response_url);
     };
 
-    function stopCont(containerId, channelId, response_url){
-        //check if container matches channel then stop and delete records
-        log("deleting containter");
+    function stopCont(containerId, teamId, channelId, response_url){
+        // If the message_action body contains teamId, we need to pass it.
+        Containers.findOne({'containerId': containerId}, function(err, data){
+            if(err) log(err);
+            if(data.channelId != channelId){
+                log('This container is not in the channel requested');
+            }else{
+                Account.findOneAndUpdate({'teamId': teamId}, {$pull: {'containers': {'containerId': containerId}}}, function(err, data){
+                    Containers.findOne({'containerId': containerId}).remove().exec();
+                    var body = {"text": "Stopping Container "+containerId, "username": "Krate"};
+                    respond(body, response_url);
+                })
+            }
+        });
     };
 
     function deleteSlip(slip, channelId, response_url){
