@@ -486,7 +486,7 @@ app.post('/command', function(req, res) {
                 if (error) {
                     log(error);
                 }else{
-                    Slips.findOneAndUpdate({'configName': file, 'teamId' team_id`}, {'updatedAt': new Date()});
+                    Slips.findOneAndUpdate({'configName': file, 'teamId': team_id}, {'updatedAt': new Date()});
                 }
             });
         });
