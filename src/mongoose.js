@@ -2,6 +2,14 @@ var mongoose = require('mongoose');
 mongoose.connect('mongodb://localhost:27017/krate');
 var Schema = mongoose.Schema;
 
+/*
+--  For Containers and Channels --
+A container can exist in multiple channels, but a channel can not have multiple conaintainers
+
+So the Contianer collection will use an array for channelIds, but the Account collection will just add another object to the array with the same container id but different cahnnel id
+*/
+
+
 var accountSchema = new Schema({
   _id: String,
   teamId: String,
@@ -26,7 +34,7 @@ var containersSchema = new Schema({
   host: String,
   slip: String,
   teamId: String,
-  channelId: String,
+  channelId: Array,
   startTime: Date
 });
 var Containers = mongoose.model('Containers', containersSchema);

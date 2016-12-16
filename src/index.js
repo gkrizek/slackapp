@@ -13,6 +13,8 @@ var Slips = require('./mongoose.js').Slips;
 clientId = process.env.CLIENT_ID;
 clientSecret = process.env.CLIENT_SECRET;
 verifyToken = process.env.VERIFY_TOKEN;
+awsKey = process.env.AWS_KEY;
+awsSecret = process.env.AWS_SECRET;
 
 var app = express();
 
@@ -246,31 +248,45 @@ app.post('/command', function(req, res) {
                 break;
             case "start":
                 var slip = text.split(' ')[2];
-                var id = randomstring.generate();
-                var containerId = randomstring.generate(10);
                 if(!slip){
                     var body = {"text": "You must specify a slip to boot with. Example: '/kr krate start bear'", "username": "Krate"};
                     respond(body, response_url);
                 }else{
-                    var newCont = Containers({
-                        _id: id,
-                        containerId: containerId,
-                        host: '10.9.9.2',
-                        slip: slip,
-                        teamId: team_id,
-                        channelId: channel_id
-                    });
-                    newCont.save(function(err){ 
-                        if(err){
-                            log(err);
-                        }else{
-                            Account.findOneAndUpdate({'teamId': team_id}, {'containers': [{'channelId': channel_id, 'containerId': containerId}]}, function(err, data){
-                                if (err) log(err);
-                                var body = {"text": "Starting Krate "+containerId+"...", "username": "Krate"};
-                                respond(body, response_url);
-                            });
+                    var length = userDoc.containers.length;
+                    var exists = false;
+                    for(var i = 0; i < length; i++){
+                        if(userDoc.containers[i].channel == channel_id){
+                            var exists = true;
+                            break;
                         }
-                    });
+                    }
+                    //will this execute before the for loop is over?
+                    if(exists == true){
+                        var body = {"text": "There is already a krate running in this channel.", "username": "Krate"};
+                        respond(body, response_url);
+                    }else{
+                        var id = randomstring.generate();
+                        var containerId = randomstring.generate(10);
+                        var newCont = Containers({
+                            _id: id,
+                            containerId: containerId,
+                            host: '10.9.9.2',
+                            slip: slip,
+                            teamId: team_id,
+                            channelId: [channel_id]
+                        });
+                        newCont.save(function(err){ 
+                            if(err){
+                                log(err);
+                            }else{
+                                Account.findOneAndUpdate({'teamId': team_id}, {'containers': [{'channelId': channel_id, 'containerId': containerId}]}, function(err, data){
+                                    if (err) log(err);
+                                    var body = {"text": "Starting Krate "+containerId+"...", "username": "Krate"};
+                                    respond(body, response_url);
+                                });
+                            }
+                        });
+                    }
                 }
                 break;
             case "stop":
@@ -279,17 +295,59 @@ app.post('/command', function(req, res) {
                     var body = {"text": "You must specify a container to stop. Use '/kr krate status' to find running containers", "username": "Krate"};
                     respond(body, response_url);             
                 }else{
-                    var body = {"text": "Are you sure you want to stop "+cont+"?", "attachments": [{"text": "You might want to export your code changes first.", "fallback": "Won't Delete the container.", "callback_id": "stop_cont", "color": "#ab32a4", "attachment_type": "default", "actions": [{"name": "yes", "text": "Obliterate it.", "type": "button", "value": cont},{"name": "no", "text": "Don't touch it!", "type": "button", "value": cont}]}]}
-                    respond(body, response_url);
+                    var length = userDoc.containers.length;
+                    var exists = false;
+                    for(var i = 0; i < length; i++){
+                        if(userDoc.containers[i].channel == channel_id){
+                            var exists = true;
+                            break;
+                        }
+                    }
+                    if(exists == false){
+                        var body = {"text": "There are no running containers in this channel.", "attachments": [{"text": "You might want to export your code changes first.", "fallback": "Won't Delete the container.", "callback_id": "stop_cont", "color": "#ab32a4", "attachment_type": "default", "actions": [{"name": "yes", "text": "Obliterate it.", "type": "button", "value": cont},{"name": "no", "text": "Don't touch it!", "type": "button", "value": cont}]}]}
+                        respond(body, response_url);
+                    }else{
+                        var body = {"text": "Are you sure you want to stop "+cont+"?", "attachments": [{"text": "You might want to export your code changes first.", "fallback": "Won't Delete the container.", "callback_id": "stop_cont", "color": "#ab32a4", "attachment_type": "default", "actions": [{"name": "yes", "text": "Obliterate it.", "type": "button", "value": cont},{"name": "no", "text": "Don't touch it!", "type": "button", "value": cont}]}]}
+                        respond(body, response_url);
+                    }
                 }
                 break;
             case "attach":
-                var body = {"text": "Attaching Krate...", "username": "Krate"};
-                respond(body, response_url);
+                var cont = text.split(' ')[2];
+                if(!cont){
+                    var body = {"text": "You must specify a container to attach. Use '/kr krate status' to find running containers", "username": "Krate"};
+                    respond(body, response_url);             
+                }else{
+                    Containers.findOne({'containerId': cont}, function(err, data){
+                        if(err) log(err);
+                        if(data.teamId != team_id){
+                            var body = {"text": "I can't find a container for your team by that name.", "username": "Krate"};
+                            respond(body, response_url);
+                        }else{
+                            Account.findOneAndUpdate({'teamId': team_id}, {'containers': [{'channelId': channel_id, 'containerId': cont}]}, function(err, data){
+                                if (err) log(err);
+                                Containers.findOneAndUpdate({'containerId': cont}, {$push: {'channelId': channel_id}}, function(err, data){
+                                    var body = {"text": "Krate "+cont+" is now attached.", "username": "Krate"};
+                                    respond(body, response_url);
+                                })
+                            });
+                        }
+                    });
+                }
                 break;
             case "detach":
-                var body = {"text": "Detaching Krate...", "username": "Krate"};
-                respond(body, response_url);
+                var cont = text.split(' ')[2];
+                if(!cont){
+                    var body = {"text": "You must specify a container to attach. Use '/kr krate status' to find running containers", "username": "Krate"};
+                    respond(body, response_url);             
+                }else{
+                    Account.findOneAndUpdate({'teamId': teamId}, {$pull: {'containers': {'channelId': channel_id}}}, function(err, data){
+                        Containers.findOneAndUpdate({'containerId': cont}, {$pull: {'channelId': channel_id}}, function(err, data){
+                            var body = {"text": "Krate "+cont+" was detached from current channel.", "username": "Krate"};
+                            respond(body, response_url);
+                        });
+                    });
+                }
                 break;
             default:
                 var body = {"text": "Unknown command. Use [help] for usage.", "username": "Krate"};
@@ -300,7 +358,6 @@ app.post('/command', function(req, res) {
     function slip(text, team_id, channel_id, response_url, userDoc){
         var command = text.split(' ')[1];
         //Maybe need a RENAME command
-        log(userDoc)
         switch(command){
             case "list":
                 if(userDoc.slips.length == 0){
@@ -321,36 +378,52 @@ app.post('/command', function(req, res) {
                 var s3 = 'https://s3.amazonaws.com/slips/'+team_id+'/'+filename+'.json';
                 var file = "{\n\tproject_name: "+filename+",\n\tgit_url: <git-url>,\n\tgit_branch: <git-branch>\n}";
                 var token = userDoc.oauth;
-                request({
-                    url: 'https://slack.com/api/files.upload',
-                    qs: {token: token, filename: filename, channels: channel_id, content: file},
-                    method: 'POST',
-                }, function (error, response, body) {
-                    if(error){
-                        log(error);
+                Account.findOne({'teamId': team_id}, function(err, data){
+                    var length = data.slips.length;
+                    var exists = false;
+                    for(var i = 0; i < length; i++){
+                        if(data.slips[i] == filename){
+                            var exists = true;
+                            break;
+                        }
+                    }
+                    if(exists == false){
+                        var body = {"text": "That slip name already exists. Please use a new one.", "username": "Krate"};
+                        respond(body, response_url);
+                    }else{
+                        request({
+                            url: 'https://slack.com/api/files.upload',
+                            qs: {token: token, filename: filename, channels: channel_id, content: file},
+                            method: 'POST',
+                        }, function (error, response, body) {
+                            if(error){
+                                log(error);
+                            }else{
+                                var newSlip = Slips({
+                                    _id: id,
+                                    configName: filename,
+                                    url: s3,
+                                    teamId: team_id,
+                                    createdAt: new Date(),
+                                    updatedAt: new Date()
+                                });
+                                newSlip.save(function(err, res){
+                                    if(err) log(err);
+                                    Account.findOneAndUpdate({'teamId': team_id}, {$push: {'slips': filename}});
+                                });
+                            }
+                        });
                     }
                 });
-                var newSlip = Slips({
-                    _id: id,
-                    configName: filename,
-                    url: s3,
-                    teamId: team_id,
-                    createdAt: new Date(),
-                    updatedAt: new Date()
-                });
-                newSlip.save();
                 break;
             case "edit":
+                //curl s3 and upload
                 var body = {"text": "Editing Slip...", "username": "Krate"};
                 respond(body, response_url);
                 break;
             case "delete":
-            //Use buttons here instead
-                var body = {"text": "If you really want to delete "+text.split(' ')[2]+" then call '/kr slip delete-force "+text.split(' ')[2]+"'", "username": "Krate"};
-                respond(body, response_url);
-                break;
-            case "delete-force":
-                var body = {"text": "Deleting Slip...", "username": "Krate"};
+                var slip = text.split(' ')[2];
+                var body = {"text": "Are you sure you want to delete "+slip+"?", "attachments": [{"text": "This can't be undone and the slip will be lost forever.", "fallback": "Won't Delete the slip.", "callback_id": "delete_slip", "color": "#ab32a4", "attachment_type": "default", "actions": [{"name": "yes", "text": "Obliterate it.", "type": "button", "value": slip},{"name": "no", "text": "Don't touch it!", "type": "button", "value": slip}]}]};
                 respond(body, response_url);
                 break;
             default:
@@ -361,31 +434,41 @@ app.post('/command', function(req, res) {
 
     function edit(text, team_id, channel_id, response_url, userDoc){
         var file = text.split(' ')[1];
-        request({
-            url: 'http://localhost:1515/edit',
-            json: true,
-            headers: {'content-type': 'application/json'},
-            body: {'file': file, 'channel_id': channel_id, 'token': userDoc.oauth},
-            method: 'POST'
-        }, function (error, response, body) {
-            if (error) {
-                log(error);
-            }
+        Containers.findOne({'channelId': channel_id}, function(err, data){
+            var host = data.host;
+            request({
+                //url: 'http://'+host+'/edit',
+                url: 'http://localhost:1515/edit',
+                json: true,
+                headers: {'content-type': 'application/json'},
+                body: {'file': file, 'channel_id': channel_id, 'token': userDoc.oauth},
+                method: 'POST'
+            }, function (error, response, body) {
+                if (error) {
+                    log(error);
+                }else{
+                    Slips.findOneAndUpdate({'configName': file}, {'updatedAt': new Date()});
+                }
+            });
         });
     };
 
     function execute(text, team_id, channel_id, response_url, userDoc){
         var command = text.split(/ (.+)/)[1];
-        request({
-            url: 'http://localhost:1515/exec',
-            json: true,
-            headers: {'content-type': 'application/json'},
-            body: {'command': command, 'response_url': response_url},
-            method: 'POST'
-        }, function (error, response, body) {
-            if (error) {
-                log(error);
-            }
+        Containers.findOne({'channelId': channel_id}, function(err, data){
+            var host = data.host;
+            request({
+                //url: 'http://'+host+'/exec',
+                url: 'http://localhost:1515/exec',
+                json: true,
+                headers: {'content-type': 'application/json'},
+                body: {'command': command, 'response_url': response_url},
+                method: 'POST'
+            }, function (error, response, body) {
+                if (error) {
+                    log(error);
+                }
+            });
         });
     };
 
