@@ -3,6 +3,7 @@ var request = require('request');
 var bodyParser = require('body-parser');
 var exec = require('child_process').exec;
 var randomstring = require("randomstring");
+var S3 = require('aws-sdk/clients/s3');
 fs = require('fs');
 var log = console.log;
 var Account = require('./mongoose.js').Account;
@@ -17,6 +18,10 @@ awsKey = process.env.AWS_KEY;
 awsSecret = process.env.AWS_SECRET;
 
 var app = express();
+var s3 = new S3({
+    region: 'us-west-2', 
+    credentials: {"accessKeyId": awsKey, "secretAccessKey": awsSecret}
+});
 
 const PORT=8080;
 
@@ -383,6 +388,17 @@ app.post('/command', function(req, res) {
                 var s3 = 'https://s3.amazonaws.com/slips/'+team_id+'/'+filename+'.json';
                 var file = "{\n\tproject_name: "+filename+",\n\tgit_url: <git-url>,\n\tgit_branch: <git-branch>\n}";
                 var token = userDoc.oauth;
+                var params = {
+                    Bucket: 'testing-krate-slips',
+                    Key: '/'+team_id+'/'+filename+'.json',
+                    ACL: 'private',
+                    Body: file,
+                    ContentLanguage: 'JSON'
+                }
+                s3.putObject(params, function(err, res){
+                    if(err) log(err);
+                    else log(data);
+                })
                 Account.findOne({'teamId': team_id}, function(err, data){
                     var length = data.slips.length;
                     var exists = false;
@@ -422,9 +438,27 @@ app.post('/command', function(req, res) {
                 });
                 break;
             case "edit":
-                //curl s3 and upload
-                var body = {"text": "Editing Slip...", "username": "Krate"};
-                respond(body, response_url);
+                var slip = text.split(' ')[2];
+                var token = userDoc.oauth;
+                var params = {
+                    Bucket: 'testing-krate-slips',
+                    Key: '/'+team_id+'/'+slip+'.json'
+                }
+                s3.getObject(params, function(err, res){
+                    if(err) log(err);
+                    else
+                        log(res);
+                        request({
+                            url: 'https://slack.com/api/files.upload',
+                            qs: {token: token, filename: slip+'.json', channels: channel_id, content: res},
+                            method: 'POST',
+                        }, function (error, response, body){
+                            if(error){
+                                log(error);
+                            }
+                        });
+                    ;
+                });
                 break;
             case "delete":
                 var slip = text.split(' ')[2];
@@ -483,10 +517,37 @@ app.post('/command', function(req, res) {
         //maybe have the option to not specify slip or file, and in that case, just commit most recent file in history. But how would you know what it goes to?
         switch(command){
             case "slip":
-                var body = {"text": "Commiting slip "+file+"...","username": "Krate"};
-                respond(body, response_url);
+                request({
+                    url: 'https://slack.com/api/files.list',
+                    qs: {token: userDoc.oauth, channel: channel_id},
+                    method: 'POST'
+                }, function(err, response, body){
+                    var result = JSON.parse(body);
+                    var downUrl = result.files[0].url_private;
+                    var headers = {"Authorization": "Bearer "+userDoc.oauth};
+                    request({
+                        url: downUrl,
+                        headers: headers,
+                        method: 'GET'
+                    }, function (error, response, body) {
+                        var params = {
+                            Bucket: 'testing-krate-slips',
+                            Key: '/'+team_id+'/'+file+'.json',
+                            ACL: 'private',
+                            Body: body,
+                            ContentLanguage: 'JSON'
+                        }
+                        s3.putObject(params, function(err, res){
+                            if(err) log(err);
+                            else log(data);
+                            var body = {"text": "Slip '"+file+"' saved successfully.", "username": "Krate"};
+                            respond(body, response_url);
+                        })
+                    });
+                });
                 break;
             case "file":
+            //maybe need to check name and not just get latest file.
                 request({
                     url: 'https://slack.com/api/files.list',
                     qs: {token: userDoc.oauth, channel: channel_id},
@@ -576,6 +637,7 @@ app.post('/command', function(req, res) {
     };
 
     function deleteSlip(slip, team_id, channelId, response_url){
+        //delete from s3? or maybe just rename or move to backup
         Account.findOneAndUpdate({'teamId': teamId}, {$pull: {'slips': slip}}, function(err, data){
             if(err) log(err);
             Slips.findOne({'configName': slip, 'teamId': team_id}).remove().exec();
