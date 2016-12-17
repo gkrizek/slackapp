@@ -126,8 +126,8 @@ app.post('/command', function(req, res) {
             var response_url = req.body.response_url;
             var channel_id = req.body.channel_id;
             var team_id = req.body.team_id;
-            var command = text.split(' ')[0];
-            var helpCheck = text.split(' ')[1];
+            var command = text.split(' ')[0].toLowerCase();
+            var helpCheck = text.split(' ')[1].toLowerCase();
             Account.findOne({'teamId': team_id}, function(err, data){
                 //what if it can't find it? ie data null?
                 if (err){
@@ -219,7 +219,7 @@ app.post('/command', function(req, res) {
 });
 
     function configure(text, team_id, channel_id, response_url, userDoc){
-        var krateToken = text.split(' ')[1];
+        var krateToken = text.split(' ')[1].toLowerCase();
         //Call to main site to link their Slack Team to their Krate account
         if(userDoc.accepted == true){
             var body = {"text": "You have already configured your Slack team with you Krate account.","username": "Krate"};
@@ -236,7 +236,7 @@ app.post('/command', function(req, res) {
     }
 
     function krate(text, team_id, channel_id, response_url, userDoc){
-        var command = text.split(' ')[1];
+        var command = text.split(' ')[1].toLowerCase();
         switch(command){
             case "status":
                 var length = userDoc.containers.length;
@@ -244,84 +244,79 @@ app.post('/command', function(req, res) {
                     var body = {"text": "You don't have any containers running in the channel.", "username": "Krate"};
                     respond(body, response_url);
                 }else{
-                    //this should be the most effieicnt, but I could possibly look in the containers collection matching channel id.
-                    //This will send both messages.
-                    for(var i = 0; i < length; i++){
-                        if(userDoc.containers[i].channelId == channel_id){
-                            var body = {"text": "Current running container: "+userDoc.containers[i].containerId, "username": "Krate"};
-                            respond(body, response_url);
-                            break;
-                        }else{
-                            var body = {"text": "You don't have any containers running in the channel.", "username": "Krate"};
-                            respond(body, response_url);
+                    var index = userDoc.containers.findIndex(x => x.channelId==channel_id);
+                    if(index > -1){
+                        for(var i = 0; i < length; i++){
+                            if(userDoc.containers[i].channelId == channel_id){
+                                var body = {"text": "Current running container: "+userDoc.containers[i].containerId, "username": "Krate"};
+                                respond(body, response_url);
+                                break;
+                            }
                         }
+                    }else{
+                        var body = {"text": "There are no running containers in this channel.", "username": "Krate"};
+                        respond(body, response_url);
                     }
                 }
                 break;
             case "start":
-                var slip = text.split(' ')[2];
+                var slip = text.split(' ')[2].toLowerCase();
                 if(!slip){
                     var body = {"text": "You must specify a slip to boot with. Example: '/kr krate start bear'", "username": "Krate"};
                     respond(body, response_url);
                 }else{
-                    var length = userDoc.containers.length;
-                    var exists = false;
-                    for(var i = 0; i < length; i++){
-                        if(userDoc.containers[i].channel == channel_id){
-                            var exists = true;
-                            break;
+                    if(userDoc.slips.indexOf(slip) > -1){
+                        var index = userDoc.containers.findIndex(x => x.channelId==channel_id);
+                        if(index > -1){
+                            var body = {"text": "There is already a krate running in this channel.", "username": "Krate"};
+                            respond(body, response_url);
+                        }else{
+                            var id = randomstring.generate();
+                            var containerId = randomstring.generate(10);
+                            var newCont = Containers({
+                                _id: id,
+                                containerId: containerId,
+                                host: '10.9.9.2',
+                                slip: slip,
+                                teamId: team_id,
+                                channelId: [channel_id]
+                            });
+                            newCont.save(function(err){ 
+                                if(err){
+                                    log(err);
+                                }else{
+                                    Account.findOneAndUpdate({'teamId': team_id}, {$push: {'containers': {'channelId': channel_id, 'containerId': containerId}}}, function(err, data){
+                                        if (err) log(err);
+                                        var body = {"text": "Starting Krate "+containerId+"...", "username": "Krate"};
+                                        respond(body, response_url);
+                                    });
+                                }
+                            });
                         }
-                    }
-                    //will this execute before the for loop is over?
-                    if(exists == true){
-                        var body = {"text": "There is already a krate running in this channel.", "username": "Krate"};
-                        respond(body, response_url);
                     }else{
-                        var id = randomstring.generate();
-                        var containerId = randomstring.generate(10);
-                        var newCont = Containers({
-                            _id: id,
-                            containerId: containerId,
-                            host: '10.9.9.2',
-                            slip: slip,
-                            teamId: team_id,
-                            channelId: [channel_id]
-                        });
-                        newCont.save(function(err){ 
-                            if(err){
-                                log(err);
-                            }else{
-                                //This overwrites the container and doesn't just add another
-                                Account.findOneAndUpdate({'teamId': team_id}, {'containers': [{'channelId': channel_id, 'containerId': containerId}]}, function(err, data){
-                                    if (err) log(err);
-                                    var body = {"text": "Starting Krate "+containerId+"...", "username": "Krate"};
-                                    respond(body, response_url);
-                                });
-                            }
-                        });
+                        var body = {"text": "I can't find that slip. Please make sure it's spelled correctly.", "username": "Krate"};
+                        respond(body, response_url);
                     }
                 }
                 break;
             case "stop":
-                //this send "There are no running containers and Are you sure at the same time".
                 var cont = text.split(' ')[2];
                 if(!cont){
                     var body = {"text": "You must specify a container to stop. Use '/kr krate status' to find running containers", "username": "Krate"};
                     respond(body, response_url);             
                 }else{
-                    var length = userDoc.containers.length;
-                    var exists = false;
-                    for(var i = 0; i < length; i++){
-                        if(userDoc.containers[i].channel == channel_id){
-                            var exists = true;
-                            break;
+                    var index = userDoc.containers.findIndex(x => x.channelId==channel_id);
+                    if(index > -1){
+                        var indexCont = userDoc.containers.findIndex(x => x.containerId==cont && x.channelId==channel_id);
+                        if(indexCont > -1){
+                            var body = {"text": "Are you sure you want to stop "+cont+"?", "attachments": [{"text": "You might want to export your code changes first. This will also remove it from any other attached channels.", "fallback": "Won't Delete the container.", "callback_id": "stop_cont", "color": "#ab32a4", "attachment_type": "default", "actions": [{"name": "yes", "text": "Obliterate it.", "type": "button", "value": cont},{"name": "no", "text": "Don't touch it!", "type": "button", "value": cont}]}]}
+                            respond(body, response_url);
+                        }else{
+                            var body = {"text": "That container doesn't seem to be running in this channel.", "username": "Krate"};
+                            respond(body, response_url);                            
                         }
-                    }
-                    if(exists == false){
-                        var body = {"text": "There are no running containers in this channel.", "attachments": [{"text": "You might want to export your code changes first.", "fallback": "Won't Delete the container.", "callback_id": "stop_cont", "color": "#ab32a4", "attachment_type": "default", "actions": [{"name": "yes", "text": "Obliterate it.", "type": "button", "value": cont},{"name": "no", "text": "Don't touch it!", "type": "button", "value": cont}]}]}
-                        respond(body, response_url);
-                    }else{
-                        var body = {"text": "Are you sure you want to stop "+cont+"?", "attachments": [{"text": "You might want to export your code changes first.", "fallback": "Won't Delete the container.", "callback_id": "stop_cont", "color": "#ab32a4", "attachment_type": "default", "actions": [{"name": "yes", "text": "Obliterate it.", "type": "button", "value": cont},{"name": "no", "text": "Don't touch it!", "type": "button", "value": cont}]}]}
+                    }else{                        
+                        var body = {"text": "There are no running containers in this channel.", "username": "Krate"};
                         respond(body, response_url);
                     }
                 }
@@ -338,8 +333,7 @@ app.post('/command', function(req, res) {
                             var body = {"text": "I can't find a container for your team by that name.", "username": "Krate"};
                             respond(body, response_url);
                         }else{
-                            //this overwrites existing ones and doesn't add a new one
-                            Account.findOneAndUpdate({'teamId': team_id}, {'containers': [{'channelId': channel_id, 'containerId': cont}]}, function(err, data){
+                            Account.findOneAndUpdate({'teamId': team_id}, {$push: {'containers': {'channelId': channel_id, 'containerId': cont}}}, function(err, data){
                                 if (err) log(err);
                                 Containers.findOneAndUpdate({'containerId': cont}, {$push: {'channelId': channel_id}}, function(err, data){
                                     var body = {"text": "Krate "+cont+" is now attached.", "username": "Krate"};
@@ -351,7 +345,6 @@ app.post('/command', function(req, res) {
                 }
                 break;
             case "detach":
-            //Do we want an Are You Sure message?
                 var cont = text.split(' ')[2];
                 if(!cont){
                     var body = {"text": "You must specify a container to attach. Use '/kr krate status' to find running containers", "username": "Krate"};
@@ -372,7 +365,7 @@ app.post('/command', function(req, res) {
     }
 
     function slip(text, team_id, channel_id, response_url, userDoc){
-        var command = text.split(' ')[1];
+        var command = text.split(' ')[1].toLowerCase();
         //Maybe need a RENAME command
         switch(command){
             case "list":
@@ -384,14 +377,14 @@ app.post('/command', function(req, res) {
                         slipArr.push(userDoc.slips[i]);
                     }*/
                     //Maybe snippet instead
-                    //array not pretty but funcational
+                    //array not pretty but functional
                     var body = {"text": "Current Slips: "+userDoc.slips, "username": "Krate"};
                 }
                 respond(body, response_url);
                 break;
             case "create":
                 var id = randomstring.generate();
-                var filename = text.split(' ')[2];
+                var filename = text.split(' ')[2].toLowerCase();
                 var s3 = 'https://s3.amazonaws.com/slips/'+team_id+'/'+filename+'.json';
                 var file = "{\n\tproject_name: "+filename+",\n\tgit_url: <git-url>,\n\tgit_branch: <git-branch>\n}";
                 var token = userDoc.oauth;
@@ -407,15 +400,7 @@ app.post('/command', function(req, res) {
                     else log(data);
                 })*/
                 Account.findOne({'teamId': team_id}, function(err, data){
-                    var length = data.slips.length;
-                    var exists = false;
-                    for(var i = 0; i < length; i++){
-                        if(data.slips[i] == filename){
-                            var exists = true;
-                            break;
-                        }
-                    }
-                    if(exists == true){
+                    if(userDoc.slips.indexOf(filename) > -1){
                         var body = {"text": "That slip name already exists. Please use a new one.", "username": "Krate"};
                         respond(body, response_url);
                     }else{
@@ -445,7 +430,7 @@ app.post('/command', function(req, res) {
                 });
                 break;
             case "edit":
-                var slip = text.split(' ')[2];
+                var slip = text.split(' ')[2].toLowerCase();
                 var token = userDoc.oauth;
                 var params = {
                     Bucket: 'testing-krate-slips',
@@ -468,10 +453,14 @@ app.post('/command', function(req, res) {
                 });
                 break;
             case "delete":
-            //maybe check here first if slip exists
-                var slip = text.split(' ')[2];
-                var body = {"text": "Are you sure you want to delete "+slip+"?", "attachments": [{"text": "This can't be undone and the slip will be lost forever.", "fallback": "Won't Delete the slip.", "callback_id": "delete_slip", "color": "#ab32a4", "attachment_type": "default", "actions": [{"name": "yes", "text": "Obliterate it.", "type": "button", "value": slip},{"name": "no", "text": "Don't touch it!", "type": "button", "value": slip}]}]};
-                respond(body, response_url);
+                var slip = text.split(' ')[2].toLowerCase();
+                if(userDoc.slips.indexOf(slip) > -1){
+                    var body = {"text": "Are you sure you want to delete "+slip+"?", "attachments": [{"text": "This can't be undone and the slip will be lost forever.", "fallback": "Won't Delete the slip.", "callback_id": "delete_slip", "color": "#ab32a4", "attachment_type": "default", "actions": [{"name": "yes", "text": "Obliterate it.", "type": "button", "value": slip},{"name": "no", "text": "Don't touch it!", "type": "button", "value": slip}]}]};
+                    respond(body, response_url);
+                }else{
+                    var body = {"text": "That slip doesn't exist.", "username": "Krate"};
+                    respond(body, response_url);  
+                }
                 break;
             default:
                 var body = {"text": "Unknown command. Use [help] for usage.", "username": "Krate"};
@@ -480,7 +469,7 @@ app.post('/command', function(req, res) {
     }
 
     function edit(text, team_id, channel_id, response_url, userDoc){
-        var file = text.split(' ')[1];
+        var file = text.split(' ')[1].toLowerCase();
         Containers.findOne({'channelId': channel_id}, function(err, data){
             var host = data.host;
             request({
@@ -520,7 +509,7 @@ app.post('/command', function(req, res) {
     };
 
     function commit(text, team_id, channel_id, response_url, userDoc){
-        var command = text.split(' ')[1];
+        var command = text.split(' ')[1].toLowerCase();
         var file = text.split(' ')[2];
         //maybe have the option to not specify slip or file, and in that case, just commit most recent file in history. But how would you know what it goes to?
         switch(command){
@@ -631,15 +620,15 @@ app.post('/command', function(req, res) {
     function stopCont(containerId, team_id, channel_id, response_url){
         Containers.findOne({'containerId': containerId}, function(err, data){
             if(err) log(err);
-            if(data.channelId != channel_id){
-                log('This container is not in the channel requested');
-            }else{
+            if(data.channelId.indexOf(channel_id) > -1){
                 Account.findOneAndUpdate({'teamId': team_id}, {$pull: {'containers': {'containerId': containerId}}}, function(err, data){
                     if(err) log(err);
                     Containers.findOne({'containerId': containerId}).remove().exec();
-                    var body = {"text": "Stopping Container "+containerId, "username": "Krate"};
+                    var body = {"text": "Container "+containerId+" is stopped.", "username": "Krate"};
                     respond(body, response_url);
-                })
+                });
+            }else{
+                log('This container is not in the channel requested');
             }
         });
     };
