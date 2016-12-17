@@ -245,14 +245,16 @@ app.post('/command', function(req, res) {
                     respond(body, response_url);
                 }else{
                     //this should be the most effieicnt, but I could possibly look in the containers collection matching channel id.
+                    //This will send both messages.
                     for(var i = 0; i < length; i++){
-                        if(userDoc.containers[i].channel == channel_id){
-                            var body = {"text": "Current running container: "+userDoc.containers[i].name, "username": "Krate"};
+                        if(userDoc.containers[i].channelId == channel_id){
+                            var body = {"text": "Current running container: "+userDoc.containers[i].containerId, "username": "Krate"};
+                            respond(body, response_url);
                             break;
                         }else{
                             var body = {"text": "You don't have any containers running in the channel.", "username": "Krate"};
+                            respond(body, response_url);
                         }
-                        respond(body, response_url);
                     }
                 }
                 break;
@@ -289,6 +291,7 @@ app.post('/command', function(req, res) {
                             if(err){
                                 log(err);
                             }else{
+                                //This overwrites the container and doesn't just add another
                                 Account.findOneAndUpdate({'teamId': team_id}, {'containers': [{'channelId': channel_id, 'containerId': containerId}]}, function(err, data){
                                     if (err) log(err);
                                     var body = {"text": "Starting Krate "+containerId+"...", "username": "Krate"};
@@ -300,6 +303,7 @@ app.post('/command', function(req, res) {
                 }
                 break;
             case "stop":
+                //this send "There are no running containers and Are you sure at the same time".
                 var cont = text.split(' ')[2];
                 if(!cont){
                     var body = {"text": "You must specify a container to stop. Use '/kr krate status' to find running containers", "username": "Krate"};
@@ -334,6 +338,7 @@ app.post('/command', function(req, res) {
                             var body = {"text": "I can't find a container for your team by that name.", "username": "Krate"};
                             respond(body, response_url);
                         }else{
+                            //this overwrites existing ones and doesn't add a new one
                             Account.findOneAndUpdate({'teamId': team_id}, {'containers': [{'channelId': channel_id, 'containerId': cont}]}, function(err, data){
                                 if (err) log(err);
                                 Containers.findOneAndUpdate({'containerId': cont}, {$push: {'channelId': channel_id}}, function(err, data){
@@ -346,12 +351,13 @@ app.post('/command', function(req, res) {
                 }
                 break;
             case "detach":
+            //Do we want an Are You Sure message?
                 var cont = text.split(' ')[2];
                 if(!cont){
                     var body = {"text": "You must specify a container to attach. Use '/kr krate status' to find running containers", "username": "Krate"};
                     respond(body, response_url);             
                 }else{
-                    Account.findOneAndUpdate({'teamId': teamId}, {$pull: {'containers': {'channelId': channel_id}}}, function(err, data){
+                    Account.findOneAndUpdate({'teamId': team_id}, {$pull: {'containers': {'channelId': channel_id}}}, function(err, data){
                         Containers.findOneAndUpdate({'containerId': cont}, {$pull: {'channelId': channel_id}}, function(err, data){
                             var body = {"text": "Krate "+cont+" was detached from current channel.", "username": "Krate"};
                             respond(body, response_url);
@@ -378,6 +384,7 @@ app.post('/command', function(req, res) {
                         slipArr.push(userDoc.slips[i]);
                     }*/
                     //Maybe snippet instead
+                    //array not pretty but funcational
                     var body = {"text": "Current Slips: "+userDoc.slips, "username": "Krate"};
                 }
                 respond(body, response_url);
@@ -395,10 +402,10 @@ app.post('/command', function(req, res) {
                     Body: file,
                     ContentLanguage: 'JSON'
                 }
-                s3.putObject(params, function(err, res){
+                /*s3.putObject(params, function(err, res){
                     if(err) log(err);
                     else log(data);
-                })
+                })*/
                 Account.findOne({'teamId': team_id}, function(err, data){
                     var length = data.slips.length;
                     var exists = false;
@@ -408,7 +415,7 @@ app.post('/command', function(req, res) {
                             break;
                         }
                     }
-                    if(exists == false){
+                    if(exists == true){
                         var body = {"text": "That slip name already exists. Please use a new one.", "username": "Krate"};
                         respond(body, response_url);
                     }else{
@@ -430,7 +437,7 @@ app.post('/command', function(req, res) {
                                 });
                                 newSlip.save(function(err, res){
                                     if(err) log(err);
-                                    Account.findOneAndUpdate({'teamId': team_id}, {$push: {'slips': filename}});
+                                    Account.findOneAndUpdate({'teamId': team_id}, {$push: {'slips': filename}}).exec();
                                 });
                             }
                         });
@@ -461,6 +468,7 @@ app.post('/command', function(req, res) {
                 });
                 break;
             case "delete":
+            //maybe check here first if slip exists
                 var slip = text.split(' ')[2];
                 var body = {"text": "Are you sure you want to delete "+slip+"?", "attachments": [{"text": "This can't be undone and the slip will be lost forever.", "fallback": "Won't Delete the slip.", "callback_id": "delete_slip", "color": "#ab32a4", "attachment_type": "default", "actions": [{"name": "yes", "text": "Obliterate it.", "type": "button", "value": slip},{"name": "no", "text": "Don't touch it!", "type": "button", "value": slip}]}]};
                 respond(body, response_url);
@@ -537,12 +545,12 @@ app.post('/command', function(req, res) {
                             Body: body,
                             ContentLanguage: 'JSON'
                         }
-                        s3.putObject(params, function(err, res){
+                        /*s3.putObject(params, function(err, res){
                             if(err) log(err);
                             else log(data);
                             var body = {"text": "Slip '"+file+"' saved successfully.", "username": "Krate"};
                             respond(body, response_url);
-                        })
+                        })*/
                     });
                 });
                 break;
@@ -621,15 +629,15 @@ app.post('/command', function(req, res) {
     };
 
     function stopCont(containerId, team_id, channel_id, response_url){
-        Containers.findOne({'containerId': container_id}, function(err, data){
+        Containers.findOne({'containerId': containerId}, function(err, data){
             if(err) log(err);
             if(data.channelId != channel_id){
                 log('This container is not in the channel requested');
             }else{
-                Account.findOneAndUpdate({'teamId': teamId}, {$pull: {'containers': {'containerId': container_id}}}, function(err, data){
+                Account.findOneAndUpdate({'teamId': team_id}, {$pull: {'containers': {'containerId': containerId}}}, function(err, data){
                     if(err) log(err);
-                    Containers.findOne({'containerId': container_id}).remove().exec();
-                    var body = {"text": "Stopping Container "+container_id, "username": "Krate"};
+                    Containers.findOne({'containerId': containerId}).remove().exec();
+                    var body = {"text": "Stopping Container "+containerId, "username": "Krate"};
                     respond(body, response_url);
                 })
             }
@@ -638,7 +646,7 @@ app.post('/command', function(req, res) {
 
     function deleteSlip(slip, team_id, channelId, response_url){
         //delete from s3? or maybe just rename or move to backup
-        Account.findOneAndUpdate({'teamId': teamId}, {$pull: {'slips': slip}}, function(err, data){
+        Account.findOneAndUpdate({'teamId': team_id}, {$pull: {'slips': slip}}, function(err, data){
             if(err) log(err);
             Slips.findOne({'configName': slip, 'teamId': team_id}).remove().exec();
             var body = {"text": "Deleted slip "+slip, "username": "Krate"};
