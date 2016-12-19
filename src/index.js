@@ -387,10 +387,20 @@ app.post('/command', function(req, res) {
             case "create":
                 var id = randomstring.generate();
                 var filename = text.split(' ')[2].toLowerCase();
-                var s3 = 'https://s3.amazonaws.com/slips/'+team_id+'/'+filename+'.json';
+                var s3Url = 'https://s3.amazonaws.com/slips/'+team_id+'/'+filename+'.json';
                 var file = "{\n\t\"project_name\": \""+filename+"\",\n\t\"git_url\": \"<git-url>\",\n\t\"git_branch\": \"<git-branch>\"\n}";
                 var token = userDoc.oauth;
-                upload(team_id, filename, file);
+                var params = {
+                    Bucket: 'testing-krate-slips',
+                    Key: team_id+'/'+filename+'.json',
+                    ACL: 'private',
+                    Body: file,
+                    ContentLanguage: 'JSON'
+                };
+                s3.putObject(params, function(err, res){
+                    if(err) log(err);
+                    else log(res);
+                });
                 Account.findOne({'teamId': team_id}, function(err, data){
                     if(userDoc.slips.indexOf(filename) > -1){
                         var body = {"text": "That slip name already exists. Please use a new one.", "username": "Krate"};
@@ -634,20 +644,6 @@ app.post('/command', function(req, res) {
             respond(body, response_url);
         })
     };
-
-function upload(team_id, filename, file){
-                var params = {
-                    Bucket: 'testing-krate-slips',
-                    Key: team_id+'/'+filename+'.json',
-                    ACL: 'private',
-                    Body: file,
-                    ContentLanguage: 'JSON'
-                };
-                s3.putObject(params, function(err, res){
-                    if(err) log(err);
-                    else log(res);
-                });
-}
 
 function respond(body, response_url){
     request({
