@@ -220,6 +220,7 @@ app.post('/command', function(req, res) {
 });
 
     function configure(text, team_id, channel_id, response_url, userDoc){
+
         var krateToken = text.split(' ')[1].toLowerCase();
         //Call to main site to link their Slack Team to their Krate account
         if(userDoc.accepted == true){
@@ -310,7 +311,7 @@ app.post('/command', function(req, res) {
                     if(index > -1){
                         var indexCont = userDoc.containers.findIndex(x => x.containerId==cont && x.channelId==channel_id);
                         if(indexCont > -1){
-                            var body = {"text": "Are you sure you want to stop "+cont+"?", "attachments": [{"text": "You might want to export your code changes first. This will also remove it from any other attached channels.", "fallback": "Won't Delete the container.", "callback_id": "stop_cont", "color": "#ab32a4", "attachment_type": "default", "actions": [{"name": "yes", "text": "Obliterate it.", "type": "button", "value": cont},{"name": "no", "text": "Don't touch it!", "type": "button", "value": cont}]}]}
+                            var body = {"text": "Are you sure you want to stop "+cont+"?", "attachments": [{"text": "You might want to export your code changes first. This will also remove it from any other attached channels.", "fallback": "Won't Delete the container.", "callback_id": "stop_cont", "color": "#ab32a4", "attachment_type": "default", "actions": [{"name": "yes", "text": "Obliterate it.", "type": "button", "value": cont},{"name": "no", "text": "Don't touch it!", "type": "button", "value": cont}]}]};
                             respond(body, response_url);
                         }else{
                             var body = {"text": "That container doesn't seem to be running in this channel.", "username": "Krate"};
@@ -387,7 +388,7 @@ app.post('/command', function(req, res) {
                 var id = randomstring.generate();
                 var filename = text.split(' ')[2].toLowerCase();
                 var s3 = 'https://s3.amazonaws.com/slips/'+team_id+'/'+filename+'.json';
-                var file = "{\n\tproject_name: "+filename+",\n\tgit_url: <git-url>,\n\tgit_branch: <git-branch>\n}";
+                var file = "{\n\t\"project_name\": \""+filename+"\",\n\t\"git_url\": \"<git-url>\",\n\t\"git_branch\": \"<git-branch>\"\n}";
                 var token = userDoc.oauth;
                 upload(team_id, filename, file);
                 Account.findOne({'teamId': team_id}, function(err, data){
@@ -458,7 +459,7 @@ app.post('/command', function(req, res) {
                 respond(body, response_url);
         }
     }
-
+    
     function edit(text, team_id, channel_id, response_url, userDoc){
         var file = text.split(' ')[1].toLowerCase();
         Containers.findOne({'channelId': channel_id}, function(err, data){
@@ -572,7 +573,7 @@ app.post('/command', function(req, res) {
         var line = text.split(' ')[2];
         var start = line - 25;
         var end = (line - 0) + 25;
-        //If no container exists does this report an error or report nothing?
+        //If no container exists data returns null
         Containers.findOne({'channelId': channel_id}, function(err, data){
             var host = data.host;       
             request({
@@ -637,7 +638,7 @@ app.post('/command', function(req, res) {
 function upload(team_id, filename, file){
                 var params = {
                     Bucket: 'testing-krate-slips',
-                    Key: '/'+team_id+'/'+filename+'.json',
+                    Key: team_id+'/'+filename+'.json',
                     ACL: 'private',
                     Body: file,
                     ContentLanguage: 'JSON'
