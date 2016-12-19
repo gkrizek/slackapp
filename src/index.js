@@ -417,7 +417,7 @@ app.post('/command', function(req, res) {
                                 var newSlip = Slips({
                                     _id: id,
                                     configName: filename,
-                                    url: s3,
+                                    url: s3Url,
                                     teamId: team_id,
                                     createdAt: new Date(),
                                     updatedAt: new Date()
@@ -436,7 +436,7 @@ app.post('/command', function(req, res) {
                 var token = userDoc.oauth;
                 var params = {
                     Bucket: 'testing-krate-slips',
-                    Key: '/'+team_id+'/'+slip+'.json'
+                    Key: team_id+'/'+slip+'.json'
                 }
                 s3.getObject(params, function(err, res){
                     if(err) log(err);
