@@ -441,10 +441,9 @@ app.post('/command', function(req, res) {
                 s3.getObject(params, function(err, res){
                     if(err) log(err);
                     else
-                        log(res);
                         request({
                             url: 'https://slack.com/api/files.upload',
-                            qs: {token: token, filename: slip+'.json', channels: channel_id, content: res},
+                            qs: {token: token, filename: slip+'.json', channels: channel_id, content: res.Body.toString()},
                             method: 'POST',
                         }, function (error, response, body){
                             if(error){
@@ -529,19 +528,21 @@ app.post('/command', function(req, res) {
                         headers: headers,
                         method: 'GET'
                     }, function (error, response, body) {
+                        //probably shouldn't use user's input here for filename, rather just use it for verification.
                         var params = {
                             Bucket: 'testing-krate-slips',
-                            Key: '/'+team_id+'/'+file+'.json',
+                            Key: team_id+'/'+file+'.json',
                             ACL: 'private',
                             Body: body,
                             ContentLanguage: 'JSON'
                         }
-                        /*s3.putObject(params, function(err, res){
+                        s3.putObject(params, function(err, res){
                             if(err) log(err);
-                            else log(data);
+                            else log(res);
+                            Slips.findOneAndUpdate({teamId: team_id, configName: file}, {updatedAt: new Date()}).exec();
                             var body = {"text": "Slip '"+file+"' saved successfully.", "username": "Krate"};
                             respond(body, response_url);
-                        })*/
+                        })
                     });
                 });
                 break;

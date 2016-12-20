@@ -72,7 +72,7 @@ app.post('/commit', function(req, res){
     }, function (error, response, body) {
         fs.writeFile('./'+file, body, function(err){
             if(err){
-                log(err);
+                //log(err);
             }
             var body = {"text": file+" was successfully saved.", "username": "Krate"};
             respond(body, response_url);
