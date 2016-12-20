@@ -37,7 +37,7 @@ app.get '/', (req, res) ->
 
 app.get '/oauth', (req, res) ->
 	if not req.query.code
-		res.status(500).send ({"Error": "Looks like we're not getting code."})
+		res.status(500).send({"Error": "Looks like we're not getting code."})
 	else
 		request
 			url: 'https://slack.com/api/oauth.access'
@@ -45,7 +45,48 @@ app.get '/oauth', (req, res) ->
 				code: req.query.code
 				client_id: client_id
 				client_secret: client_secret
-			method: 'GET'
+			method: 'GET', (err, res, body) -> 
+				if err
+					console.log(err)
+				else
+					exist = Account.count
+								team_id: body.team_id
+					if exist > 0
+						result		= JSON.parse(body)
+						id 			= randomstring.generate()
+						oauth 		= result.access_token
+						team_name 	= result.team_name
+						team_id 	= result.team_id
+						Account.findOneAndUpdate
+							team_id: team_id,
+								oauth: oauth
+								active: true
+						.exec()
+					else
+						result		= JSON.parse(body)
+						id 			= randomstring.generate()
+						oauth 		= result.access_token
+						team_name 	= result.team_name
+						team_id 	= result.team_id
+						newAccount	= Account
+										_id: id
+										team_id: team_id
+										team_name: team_name
+										active: true
+										accepted: false
+										krateToken: null
+										oauth: oauth
+										plan: 0
+										maxAllowedCont: 0
+										runningCont: 0
+										containers: []
+										slips: []
+										createdAt: new Date()
+						newAccount.save()
+				res.redirect 'https://google.com'
+
+
+
 
 
 
