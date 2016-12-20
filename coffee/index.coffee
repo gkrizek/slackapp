@@ -9,7 +9,6 @@ S3						= require 'aws-sdk/clients/s3'
 {Containers}	= require './mongoose.js'
 {Slips}				= require './mongoose.js'
 
-
 client_id = process.env.CLIENT_ID
 client_secret = process.env.CLIENT_SECRET
 verifyToken = process.env.VERIFY_TOKEN
