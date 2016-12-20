@@ -1,13 +1,13 @@
-express			= require 'express'
-request			= require 'request'
+express				= require 'express'
+request				= require 'request'
 bodyParser		= require 'body-parser'
-{exec}			= require 'child_process'
-fs				= require 'fs'
+{exec}				= require 'child_process'
+fs						= require 'fs'
 randomstring	= require 'randomstring'
-S3				= require 'aws-sdk/clients/s3'
-{Account}		= require './mongoose.js'
+S3						= require 'aws-sdk/clients/s3'
+{Account}			= require './mongoose.js'
 {Containers}	= require './mongoose.js'
-{Slips}			= require './mongoose.js'
+{Slips}				= require './mongoose.js'
 
 
 client_id = process.env.CLIENT_ID
@@ -45,7 +45,7 @@ app.get '/oauth', (req, res) ->
 				code: req.query.code
 				client_id: client_id
 				client_secret: client_secret
-			method: 'GET', (err, res, body) -> 
+			method: 'GET', (err, res, body) ->
 				if err
 					console.log(err)
 				else
@@ -53,9 +53,9 @@ app.get '/oauth', (req, res) ->
 								team_id: body.team_id
 					if exist > 0
 						result		= JSON.parse(body)
-						id 			= randomstring.generate()
+						id 				= randomstring.generate()
 						oauth 		= result.access_token
-						team_name 	= result.team_name
+						team_name = result.team_name
 						team_id 	= result.team_id
 						Account.findOneAndUpdate
 							team_id: team_id,
@@ -63,11 +63,11 @@ app.get '/oauth', (req, res) ->
 								active: true
 						.exec()
 					else
-						result		= JSON.parse(body)
-						id 			= randomstring.generate()
-						oauth 		= result.access_token
-						team_name 	= result.team_name
-						team_id 	= result.team_id
+						result			= JSON.parse(body)
+						id 					= randomstring.generate()
+						oauth 			= result.access_token
+						team_name		= result.team_name
+						team_id 		= result.team_id
 						newAccount	= Account
 										_id: id
 										team_id: team_id
@@ -84,11 +84,3 @@ app.get '/oauth', (req, res) ->
 										createdAt: new Date()
 						newAccount.save()
 				res.redirect 'https://google.com'
-
-
-
-
-
-
-
-
