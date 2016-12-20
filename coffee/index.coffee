@@ -25,7 +25,6 @@ s3 = new S3
     accessKeyId: awsKey
     secrectAccessKey: awsSecret
 
-
 app.listen port
 
 app.use bodyParser.urlencoded
@@ -91,7 +90,7 @@ app.post '/message_action', (req, res) ->
   value         = result.actions[0].value
   team_id       = result.team.id
   channel_id    = result.channel.id
-  response_url  =	result.response_url
+  response_url  = result.response_url
   slackToken    = result.token
   if not slackToken or slackToken isnt verifyToken
     res.send 'This request doesn\'t seem to be coming from Slack.'
@@ -131,8 +130,8 @@ app.post '/command', (req, res) ->
     response_url  = req.body.response_url
     channel_id    = req.body.channel_id
     team_id       = req.body.team_id
-    command       = text.split(' ')[0].toLowerCase
-    helpCheck     = text.split(' ')[1].toLowerCase
+    command       = text.split(' ')[0]
+    if text.split(' ')[1] then helpCheck = text.split(' ')[1].toLowerCase
     Account.findOne
       team_id: team_id, (err, data) ->
         if err
@@ -148,7 +147,7 @@ app.post '/command', (req, res) ->
               "text": "It looks like your account is not active. Please login to your account at https://krate.sh/login to find out why."
               "username": "Krate"
           else
-            switch command
+            switch command.toLowerCase
               when "configure"
                 if helpCheck is "help"
                   res.send
@@ -165,3 +164,136 @@ app.post '/command', (req, res) ->
                   res.send
                     "text": "Request received..."
                   krate text, team_id, channel_id, response_url, userDoc
+              when "slip"
+                if helpCheck is "help"
+                  res.send
+                    "text": "Example: /kr slip [list,create,edit,delete] <SLIP_NAME>"
+                else
+                  res.send
+                    "text": "Request received..."
+                  slip text, team_id, channel_id, response_url, userDoc
+              when "edit"
+                if helpCheck is "help"
+                  res.send
+                    "text": "Example: /kr edit <FILENAME>"
+                else
+                  res.send
+                    "text": "Request received..."
+                  edit text, team_id, channel_id, response_url, userDoc
+              when "exec"
+                if helpCheck is "help"
+                  res.send
+                    "text": "Example: /kr exec <COMMAND>"
+                else
+                  res.send
+                    "text": "Request received..."
+                  exec text, team_id, channel_id, response_url, userDoc
+              when "commit"
+                if helpCheck is "help"
+                  res.send
+                    "text": "Example: /kr commit [slip,file] <FILENAME>"
+                else
+                  res.send
+                    "text": "Request received..."
+                  commit text, team_id, channel_id, response_url, userDoc
+              when "show"
+                if helpCheck is "help"
+                  res.send
+                    "text": "Example: /kr show <FILENAME> <LINE_NUMBER>"
+                else
+                  res.send
+                    "text": "Request received..."
+                  show text, team_id, channel_id, response_url, userDoc
+              when "export"
+                if helpCheck is "help"
+                  res.send
+                    "text": "Example: /kr export"
+                else
+                  res.send
+                    "text": "Request received..."
+                  exportCmd text, team_id, channel_id, response_url, userDoc
+              when "help"
+                res.send
+                  "text": "Usage: /kr [configure, krate, slip, edit, commit, show, exec, export]"
+                return
+              else
+                res.send
+                  "text": "Didn't understand that command. Use '/kr help' for usage."
+
+configure = (text, team_id, channel_id, response_url, userDoc) ->
+  krateToken = text.split(' ')[1]
+  if userDoc.accepted is true
+    respond
+      "text": "You have already configured your Slack team with your Krate account."
+      "username": "Krate"
+      response_url
+  else
+    if not krateToken
+      respond
+        "text": "You must pass a token. Example: '/kr configure abc123def456'"
+        "username": "Krate"
+        response_url
+    else
+      respond
+        "text": "This is the configure command"
+        "username": "Krate"
+        response_url
+
+krate = (text, team_id, channel_id, response_url, userDoc) ->
+  command = text.split(' ')[1]
+  switch command
+    when "status"
+      length = userDoc.containers.length
+      if length is 0
+        respond
+          "text": "You don't have any containers running in this channel."
+          "username": "Krate"
+      else
+        #does this properly find string in array of objects
+        if channel_id in userDoc.containers
+          for i in userDoc.containers
+            if userDoc.containers[i].channel_id is channel_id
+              respond
+                "text": "Current running container: "+userDoc.containers[i].container_id
+                "username": "Krate"
+              break
+        else
+          respond
+            "text": "There are no running containers in this channel."
+            "username": "Krate"
+    when "start"
+      slip = text.split(' ')[2]
+      if not slip
+        respond
+          "text": "You must specify a slip to boot with. Example: '/kr krate start bear'"
+          "username": "Krate"
+      else
+        if channel_id in userDoc.containers
+          respond
+            "text": "There is already a container running in this channel. You must stop or detach that container before starting a new one."
+            "username": "Krate"
+        else
+          id            = randomstring.generate
+          container_id  = randomstring.generate
+          newCont       = Containers
+                            _id:          id
+                            container_id: containerId
+                            host:         '10.5.5.1'
+                            slip:         slip
+                            team_id:      team_id
+                            channel_id:   [channel_id]
+          newCont.save (err, data) ->
+            if err
+              console.log err
+            else
+              Account.findOneAndUpdate
+                team_id:  team_id
+                  $push:
+                    containers:
+                      channel_id:   channel_id
+                      container_id: container_id (err, data) ->
+
+
+
+    else
+      console.log this
