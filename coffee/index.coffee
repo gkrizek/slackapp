@@ -96,3 +96,72 @@ app.post '/message_action', (req, res) ->
   if not slackToken or slackToken isnt verifyToken
     res.send 'This request doesn\'t seem to be coming from Slack.'
   else
+    switch callback_id
+      when "stop_cont"
+        if action is "yes"
+          stopCont value, team_id, channel_id, response_url
+          res.send
+            "text": "Stopping Krate '"+value+"'..."
+            "username": "Krate"
+        else
+          res.send
+            "text": "Leaving Krate '"+value+"' alone."
+            "username": "Krate"
+      when "delete_slip"
+        if action is "yes"
+          deleteSlip value, team_id, channel_id, response_url
+          res.send
+            "text": "Deleting Slip '"+value+"'..."
+            "username": "Krate"
+        else
+          res.send
+            "text": "Leaving Slip '"+value+"' alone."
+            "username": "Krate"
+      else
+        res.send
+          "text": "I didn't understand that option."
+          "username": "Krate"
+
+app.post '/command', (req, res) ->
+  slackToken = req.body.token
+  if not slackToken or slackToken isnt verifyToken
+    res.send 'This request doesn\'t seem to be coming from Slack.'
+  else
+    text          = req.body.text
+    response_url  = req.body.response_url
+    channel_id    = req.body.channel_id
+    team_id       = req.body.team_id
+    command       = text.split(' ')[0].toLowerCase
+    helpCheck     = text.split(' ')[1].toLowerCase
+    Account.findOne
+      team_id: team_id, (err, data) ->
+        if err
+          console.log err
+        else
+          userDoc = data
+          if userDoc.accepted is false and command isnt 'configure'
+            res.send
+              "text": "It doesn't look like you have configured Slack with your Krate account. Please create an account at https://krate.sh and run the '/kr configure' command."
+              "username": "Krate"
+          else if userDoc.accepted is false
+            res.send
+              "text": "It looks like your account is not active. Please login to your account at https://krate.sh/login to find out why."
+              "username": "Krate"
+          else
+            switch command
+              when "configure"
+                if helpCheck is "help"
+                  res.send
+                    "text": "Example: /kr configure <KEY>"
+                else
+                  res.send
+                    "text": "Request received..."
+                  configure text, team_id, channel_id, response_url, userDoc
+              when "krate"
+                if helpCheck is "help"
+                  res.send
+                    "text": "Example: /kr krate [start,stop,status,attach,detach] <SLIP_NAME>"
+                else
+                  res.send
+                    "text": "Request received..."
+                  krate text, team_id, channel_id, response_url, userDoc
