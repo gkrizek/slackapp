@@ -680,3 +680,101 @@ commit = (text, team_id, channel_id, response_url, userDoc) ->
       respond
         "text": "Unknown command. Use [help] for usage."
         "username": "Krate"
+
+show = (text, team_id, channel_id, response_url, userDoc) ->
+  file  = text.split(' ')[1]
+  line  = text.split(' ')[2]
+  start = line - 25
+  end   = (line - 0) + 25
+  Containers.findOne
+    channel_id: channel_id,
+      (err, data) ->
+        host = data.host
+        request
+          #url: "http://#{host}/show"
+          url: "http://localhost:1515/show"
+          json: true
+          headers:
+            'content-type': 'application/json'
+          body:
+            file:         file
+            start:        start
+            end:          end
+            response_url: response_url
+          method: "POST",
+            (err, response, body) ->
+              if err
+                console.log err
+
+exportCmd = (text, team_id, channel_id, response_url, userDoc) ->
+  Containers.findOne
+    channel_id: channel_id,
+      (err, data) ->
+        host = data.host
+        request
+          #url: "http://#{host}/export"
+          url: "http://localhost:1515/export"
+          json: true
+          headers:
+            'content-type': 'application/json'
+          body:
+            container: data.container_id
+            response_url: response_url
+          method: "POST",
+            (err, response, body) ->
+              if err
+                console.log err
+
+stopCont = (container_id, team_id, channel_id, response_url) ->
+  Containers.findOne
+    container_id: container_id,
+      (err, data) ->
+        if err
+          console.log err
+        else
+          if channel_id in data.channel_id
+            Account.findOneAndUpdate
+              team_id: team_id,
+                $pull:
+                  container_id: container_id,
+                (err, data) ->
+                      if err
+                        console.log err
+                      else
+                        Containers.findOne
+                          container_id: container_id
+                        .remove().exec()
+                        respond
+                          "text": "Container #{container_id} is stopped."
+                          "username": "Krate"
+          else
+            console.log 'This container is not in the channel requested'
+
+deleteSlip = (slip, team_id, channel_id, response_url) ->
+  Account.findOneAndUpdate
+    team_id: team_id,
+      $pull:
+        slips: slip,
+      (err, data) ->
+        if err
+          console.log err
+        else
+          Slips.findOne
+            configName: slip
+            team_id:    team_id
+          .remove().exec()
+          respond
+            "text": "Deleted slip '#{slip}'."
+            "username": "Krate"
+
+respond = (body, response_url) ->
+  request
+    url:    response_url
+    json:   true
+    headers:
+      'content-type': 'application/json'
+    body: body
+    method: "POST",
+      (err, response, body) ->
+        if err
+          console.log err
