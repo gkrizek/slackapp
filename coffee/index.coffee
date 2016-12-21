@@ -100,21 +100,21 @@ app.post '/message_action', (req, res) ->
         if action is "yes"
           stopCont value, team_id, channel_id, response_url
           res.send
-            "text": "Stopping Krate '"+value+"'..."
+            "text": "Stopping Krate '#{value}'..."
             "username": "Krate"
         else
           res.send
-            "text": "Leaving Krate '"+value+"' alone."
+            "text": "Leaving Krate '#{value}' alone."
             "username": "Krate"
       when "delete_slip"
         if action is "yes"
           deleteSlip value, team_id, channel_id, response_url
           res.send
-            "text": "Deleting Slip '"+value+"'..."
+            "text": "Deleting Slip '#{value}'..."
             "username": "Krate"
         else
           res.send
-            "text": "Leaving Slip '"+value+"' alone."
+            "text": "Leaving Slip '#{value}' alone."
             "username": "Krate"
       else
         res.send
@@ -254,13 +254,14 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
           for i in userDoc.containers
             if userDoc.containers[i].channel_id is channel_id
               respond
-                "text": "Current running container: "+userDoc.containers[i].container_id
+                "text": "Current running container: #{userDoc.containers[i].container_id}"
                 "username": "Krate"
               break
         else
           respond
             "text": "There are no running containers in this channel."
             "username": "Krate"
+
     when "start"
       slip = text.split(' ')[2]
       if not slip
@@ -268,32 +269,119 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
           "text": "You must specify a slip to boot with. Example: '/kr krate start bear'"
           "username": "Krate"
       else
-        if channel_id in userDoc.containers
-          respond
-            "text": "There is already a container running in this channel. You must stop or detach that container before starting a new one."
-            "username": "Krate"
+        if slip in userDoc.slips
+          if channel_id in userDoc.containers
+            respond
+              "text": "There is already a container running in this channel. You must stop or detach that container before starting a new one."
+              "username": "Krate"
+          else
+            id            = randomstring.generate
+            container_id  = randomstring.generate
+            newCont       = Containers
+                              _id:          id
+                              container_id: containerId
+                              host:         '10.5.5.1'
+                              slip:         slip
+                              team_id:      team_id
+                              channel_id:   [channel_id]
+            newCont.save (err, data) ->
+              if err
+                console.log err
+              else
+                Account.findOneAndUpdate
+                  team_id:  team_id,
+                    $push:
+                      containers:
+                        channel_id:   channel_id
+                        container_id: container_id,
+                    (err, data) ->
+                      if err
+                        console.log err
+                      else
+                        respond
+                          "text": "Starting Krate #{container_id}..."
+                          "username": "Krate"
         else
-          id            = randomstring.generate
-          container_id  = randomstring.generate
-          newCont       = Containers
-                            _id:          id
-                            container_id: containerId
-                            host:         '10.5.5.1'
-                            slip:         slip
-                            team_id:      team_id
-                            channel_id:   [channel_id]
-          newCont.save (err, data) ->
-            if err
-              console.log err
-            else
-              Account.findOneAndUpdate
-                team_id:  team_id
-                  $push:
-                    containers:
-                      channel_id:   channel_id
-                      container_id: container_id (err, data) ->
+          respond
+            "text": "I can't find that slip. Please make sure it's spelled correclt.y"
+            "username": "Krate"
 
+    when "stop"
+      container = text.split(' ')[2]
+      if not container
+        respond
+          "text": "You must specify a container to stop. Use '/kr krate status' to find current running container in this channel."
+          "username": "Krate"
+      else
+        if channel_id in userDoc.containers
+          if container and channel_id in userDoc.containers
+            respond
+              "text": "Are you sure you want to stop #{container}?"
+              "attachments": [
+                "text": "You might want to export your code changes first. This will also remove it from any other attached channels."
+                "fallback": "Won't Delete the container."
+                "callback_id": "stop_cont"
+                "color": "#ab32a4"
+                "attachment_type": "default"
+                "actions": [
+                  "name": "yes"
+                  "text": "Obliterate it."
+                  "type": "button"
+                  "value": container,
+                    "name": "no"
+                    "text": "Don't touch it!"
+                    "type": "button"
+                    "value": containter
+                ]
+              ]
+          else
+            respond
+              "text": "That conatiner doesn't seem to be running in this channel"
+              "username": "Krate"
+        else
+          respond
+            "text": "There are no running conatiners in this channel."
+            "username": "Krate"
 
+    when "attach"
+      container = text.split(' ')[2]
+      if not container
+        respond
+          "text": "You must specify a conatiner to attach. Use '/kr krate status' to find running containers"
+          "username": "Krate"
+      else
+        Container.findOne
+          container_id: container,
+            (err, data) ->
+              if err
+                console.log err
+              else
+                if data.team_id isnt team_id
+                  respond
+                    "text": "I can't find a conatiner for your team by that name."
+                    "username": "Krate"
+                else
+                  Account.findOneAndUpdate
+                    team_id: team_id,
+                      $push:
+                        containers:
+                          channel_id: channel_id
+                          container_id: container,
+                      (err, data) ->
+                        if err
+                          console.log err
+                        else
+                          Containers.findOneAndUpdate
+                            container_id: container,
+                              $push:
+                                channel_id: channel_id,
+                              (err, data) ->
+                                if err
+                                  console.log err
+                                else
+                                  respond
+                                    "text": "Krate #{container} is now attached."
+                                    "username": "Krate"
+    #when "detach"
 
-    else
-      console.log this
+    #else

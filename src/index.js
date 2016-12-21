@@ -20,7 +20,7 @@ awsSecret = process.env.AWS_SECRET;
 var app = express();
 
 var s3 = new S3({
-    region: 'us-west-2', 
+    region: 'us-west-2',
     credentials: {"accessKeyId": awsKey, "secretAccessKey": awsSecret}
 });
 
@@ -45,7 +45,7 @@ app.get('/oauth', function(req, res) {
         request({
             url: 'https://slack.com/api/oauth.access',
             qs: {code: req.query.code, client_id: clientId, client_secret: clientSecret},
-            method: 'GET', 
+            method: 'GET',
         }, function (error, response, body) {
             if (error) {
                 console.log(error);
@@ -109,7 +109,7 @@ app.post('/message_action', function(req, res){
                     deleteSlip(value, team_id, channel_id, response_url);  //need CB?
                     res.send({"text": "Deleting '"+value+"'...", "username": "Krate"});
                 }else{
-                    res.send({"text": "Leaving slip '"+value+"' alone.", "username": "Krate"});                    
+                    res.send({"text": "Leaving slip '"+value+"' alone.", "username": "Krate"});
                 }
                 break;
             default:
@@ -283,7 +283,7 @@ app.post('/command', function(req, res) {
                                 teamId: team_id,
                                 channelId: [channel_id]
                             });
-                            newCont.save(function(err){ 
+                            newCont.save(function(err){
                                 if(err){
                                     log(err);
                                 }else{
@@ -305,7 +305,7 @@ app.post('/command', function(req, res) {
                 var cont = text.split(' ')[2];
                 if(!cont){
                     var body = {"text": "You must specify a container to stop. Use '/kr krate status' to find running containers", "username": "Krate"};
-                    respond(body, response_url);             
+                    respond(body, response_url);
                 }else{
                     var index = userDoc.containers.findIndex(x => x.channelId==channel_id);
                     if(index > -1){
@@ -315,9 +315,9 @@ app.post('/command', function(req, res) {
                             respond(body, response_url);
                         }else{
                             var body = {"text": "That container doesn't seem to be running in this channel.", "username": "Krate"};
-                            respond(body, response_url);                            
+                            respond(body, response_url);
                         }
-                    }else{                        
+                    }else{
                         var body = {"text": "There are no running containers in this channel.", "username": "Krate"};
                         respond(body, response_url);
                     }
@@ -327,7 +327,7 @@ app.post('/command', function(req, res) {
                 var cont = text.split(' ')[2];
                 if(!cont){
                     var body = {"text": "You must specify a container to attach. Use '/kr krate status' to find running containers", "username": "Krate"};
-                    respond(body, response_url);             
+                    respond(body, response_url);
                 }else{
                     Containers.findOne({'containerId': cont}, function(err, data){
                         if(err) log(err);
@@ -350,7 +350,7 @@ app.post('/command', function(req, res) {
                 var cont = text.split(' ')[2];
                 if(!cont){
                     var body = {"text": "You must specify a container to attach. Use '/kr krate status' to find running containers", "username": "Krate"};
-                    respond(body, response_url);             
+                    respond(body, response_url);
                 }else{
                     Account.findOneAndUpdate({'teamId': team_id}, {$pull: {'containers': {'channelId': channel_id}}}, function(err, data){
                         Containers.findOneAndUpdate({'containerId': cont}, {$pull: {'channelId': channel_id}}, function(err, data){
@@ -372,7 +372,7 @@ app.post('/command', function(req, res) {
         switch(command){
             case "list":
                 if(userDoc.slips.length == 0){
-                    var body = {"text": "You don't have any slips. Create one with '/kr slip create <NAME>'", "username": "Krate"};   
+                    var body = {"text": "You don't have any slips. Create one with '/kr slip create <NAME>'", "username": "Krate"};
                 }else{
                     /*var slipArr = [];
                     for(var i = 0; i < userDoc.slips.length; i++){
@@ -460,7 +460,7 @@ app.post('/command', function(req, res) {
                     respond(body, response_url);
                 }else{
                     var body = {"text": "That slip doesn't exist.", "username": "Krate"};
-                    respond(body, response_url);  
+                    respond(body, response_url);
                 }
                 break;
             default:
@@ -468,7 +468,7 @@ app.post('/command', function(req, res) {
                 respond(body, response_url);
         }
     }
-    
+
     function edit(text, team_id, channel_id, response_url, userDoc){
         var file = text.split(' ')[1].toLowerCase();
         Containers.findOne({'channelId': channel_id}, function(err, data){
@@ -586,7 +586,7 @@ app.post('/command', function(req, res) {
         var end = (line - 0) + 25;
         //If no container exists data returns null
         Containers.findOne({'channelId': channel_id}, function(err, data){
-            var host = data.host;       
+            var host = data.host;
             request({
                 //url: 'http://'+host+'/show',
                 url: 'http://localhost:1515/show',
@@ -604,7 +604,7 @@ app.post('/command', function(req, res) {
 
     function exportCmd(text, team_id, channel_id, response_url, userDoc){
         Containers.findOne({'channelId': channel_id}, function(err, data){
-            var host = data.host;       
+            var host = data.host;
             request({
                 //url: 'http://'+host+'/export',
                 url: 'http://localhost:1515/export',
@@ -659,4 +659,3 @@ function respond(body, response_url){
         }
     });
 };
-
