@@ -248,6 +248,7 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
         respond
           "text": "You don't have any containers running in this channel."
           "username": "Krate"
+          response_url
       else
         #does this properly find string in array of objects
         if channel_id in userDoc.containers
@@ -256,11 +257,13 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
               respond
                 "text": "Current running container: #{userDoc.containers[i].container_id}"
                 "username": "Krate"
+                response_url
               break
         else
           respond
             "text": "There are no running containers in this channel."
             "username": "Krate"
+            response_url
 
     when "start"
       slip = text.split(' ')[2]
@@ -268,12 +271,14 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
         respond
           "text": "You must specify a slip to boot with. Example: '/kr krate start bear'"
           "username": "Krate"
+          response_url
       else
         if slip in userDoc.slips
           if channel_id in userDoc.containers
             respond
               "text": "There is already a container running in this channel. You must stop or detach that container before starting a new one."
               "username": "Krate"
+              response_url
           else
             id            = randomstring.generate
             container_id  = randomstring.generate
@@ -301,10 +306,12 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
                         respond
                           "text": "Starting Krate #{container_id}..."
                           "username": "Krate"
+                          response_url
         else
           respond
             "text": "I can't find that slip. Please make sure it's spelled correclt.y"
             "username": "Krate"
+            response_url
 
     when "stop"
       container = text.split(' ')[2]
@@ -312,6 +319,7 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
         respond
           "text": "You must specify a container to stop. Use '/kr krate status' to find current running container in this channel."
           "username": "Krate"
+          response_url
       else
         if channel_id in userDoc.containers
           if container and channel_id in userDoc.containers
@@ -334,14 +342,17 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
                     "value": containter
                 ]
               ]
+              response_url
           else
             respond
               "text": "That conatiner doesn't seem to be running in this channel"
               "username": "Krate"
+              response_url
         else
           respond
             "text": "There are no running conatiners in this channel."
             "username": "Krate"
+            response_url
 
     when "attach"
       container = text.split(' ')[2]
@@ -349,6 +360,7 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
         respond
           "text": "You must specify a conatiner to attach. Use '/kr krate status' to find running containers"
           "username": "Krate"
+          response_url
       else
         Container.findOne
           container_id: container,
@@ -360,6 +372,7 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
                   respond
                     "text": "I can't find a conatiner for your team by that name."
                     "username": "Krate"
+                    response_url
                 else
                   Account.findOneAndUpdate
                     team_id: team_id,
@@ -382,6 +395,64 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
                                   respond
                                     "text": "Krate #{container} is now attached."
                                     "username": "Krate"
-    #when "detach"
+                                    response_url
+    when "detach"
+      container = text.split(' ')[2]
+      if not container
+        respond
+          "text": "You must specify a container to detach. Use '/kr krate status' to see current running krates."
+          "username": "Krate"
+          response_url
+      else
+        Account.findOneAndUpdate
+          team_id: team_id,
+            $pull:
+              containers:
+                channel_id: channel_id,
+            (err, data) ->
+              if err
+                console.log err
+              else
+                Containers.findOneAndUpdate
+                  container_id: container,
+                    $pull:
+                      channel_id: channel_id,
+                    (err, data) ->
+                      respond
+                        "text": "Krate #{container} was detached from curent channel."
+                        "username": "Krate"
+                        response_url
 
-    #else
+    else
+      respond
+        "text": "Unknown command. Use [help] for usage."
+        "username": "Krate"
+        response_url
+
+slip = (text, team_id, channel_id, response_url, userDoc) ->
+  command = text.split(' ')[1]
+  switch command
+    when "list"
+      if userDoc.slips.length is 0
+        respond
+          "text": "You don't have any slips. Create one with '/kr slip create <SLIP_NAME>'"
+          "username": "Krate"
+          response_url
+      else
+        respond
+          "text": "Current Slips: #{userDoc.slips}"
+          "username": "Krate"
+          response_url
+    when "create"
+      id = randomstring.generate()
+      filename = text.split(' ')[2]
+      s3Url = "https://s3.amazonaws.com/testing-krate-slips/#{team_id}/#{filename}.json"
+      file = "{\n\t\"project_name\": \"#{filename}\",\n\t\"git_url\": \"<git-url>\",\n\t\"git_branch\": \"<git-branch>\"\n}"
+      token = userDoc.oauth
+      params =
+        Bucket: "testing-krate-slips"
+        Key: "#{team_id}/#{filename}.json"
+        ACL: "private"
+        Body: file
+        ContentLanguage: "JSON"
+      s3.putObject params
