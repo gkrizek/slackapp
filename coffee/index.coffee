@@ -443,16 +443,240 @@ slip = (text, team_id, channel_id, response_url, userDoc) ->
           "text": "Current Slips: #{userDoc.slips}"
           "username": "Krate"
           response_url
+
     when "create"
-      id = randomstring.generate()
-      filename = text.split(' ')[2]
-      s3Url = "https://s3.amazonaws.com/testing-krate-slips/#{team_id}/#{filename}.json"
-      file = "{\n\t\"project_name\": \"#{filename}\",\n\t\"git_url\": \"<git-url>\",\n\t\"git_branch\": \"<git-branch>\"\n}"
-      token = userDoc.oauth
-      params =
-        Bucket: "testing-krate-slips"
-        Key: "#{team_id}/#{filename}.json"
-        ACL: "private"
-        Body: file
-        ContentLanguage: "JSON"
-      s3.putObject params
+      id        = randomstring.generate()
+      filename  = text.split(' ')[2]
+      s3Url     = "https://s3.amazonaws.com/testing-krate-slips/#{team_id}/#{filename}.json"
+      file      = "{\n\t\"project_name\": \"#{filename}\",\n\t\"git_url\": \"<git-url>\",\n\t\"git_branch\": \"<git-branch>\"\n}"
+      token     = userDoc.oauth
+      params    =
+            Bucket: "testing-krate-slips"
+            Key: "#{team_id}/#{filename}.json"
+            ACL: "private"
+            Body: file
+            ContentLanguage: "JSON"
+      s3.putObject params, (err, res) ->
+        if err
+          log err
+          respond
+            "text": "There was a problem creating a slip."
+            "username": "Krate"
+            response_url
+        else
+          Account.findOne
+            team_id: team_id,
+              (err, data) ->
+                if filename in userDoc.slips
+                  respond
+                    "text": "That slip name already exists. Please use a different name."
+                    "username": "Krate"
+                    response_url
+                else
+                  request
+                    url: "https://slack.com/api/files.upload"
+                    qs:
+                      token:    token
+                      filename: filename
+                      channels: channel_id
+                      content:  file
+                    method: 'POST',
+                      (err, response, body) ->
+                        if err
+                          console.log err
+                        else
+                          newSlip = Slips
+                                      _id:        id
+                                      configName: filename
+                                      url:        s3Url
+                                      team_id:    team_id
+                                      createdAt:  new Date()
+                                      updatedAt:  new Date()
+                          newSlip.save (err, res) ->
+                            if err
+                              console.log err
+                            else
+                              Account.findOneAndUpdate
+                                team_id: team_id,
+                                  $push:
+                                    slips: filename
+                              .exec()
+
+    when "edit"
+      slip    = text.split(' ')[2]
+      token   = userDoc.oauth
+      params  =
+            Bucket: "testing-krate-slips"
+            Key: "#{team_id}/#{slip}.json"
+      s3.getObject params (err, res) ->
+        if err
+          console.log err
+        else
+          request
+            url: "https://slack.com/api/files.upload"
+            qs:
+              token: token
+              filename: "#{slip}.json"
+              channels: channel_id
+              content: res.Body.toString()
+            method: "POST",
+              (err, response, body) ->
+                if err
+                  console.log err
+
+    when "delete"
+      slip = text.split(' ')[2]
+      if slip in userDoc
+        respond
+          "text": "Are you sure you want to delete #{slip}?"
+          "attachments": [
+            "text": "This can't be undone and the slip will be lost forever."
+            "fallback": "Won't Delete the slip."
+            "callback_id": "delete_slip"
+            "color": "#ab32a4"
+            "attachment_type": "default"
+            "actions": [
+              "name": "yes"
+              "text": "Obliterate it."
+              "type": "button"
+              "value": slip,
+                "name": "no"
+                "text": "Don't touch it!"
+                "type": "button"
+                "value": slip
+            ]
+          ]
+        response_url
+      else
+        respond
+          "text": "That slip doesn't exist."
+          "username": "Krate"
+          response_url
+
+    else
+      respond
+        "text": "Unknown command. Use [help] for usage."
+        "username": "Krate"
+        response_url
+
+edit = (text, team_id, channel_id, response_url, userDoc) ->
+  file = text.split(' ')[1]
+  Containers.findOne
+    channel_id: channel_id,
+      (err, data) ->
+        host = data.host
+        request
+          #url: "http://#{host}/edit"
+          url: "http://localhost:1515/edit"
+          json: true
+          headers:
+            'content-type': 'application/json'
+          body:
+            'file':       file
+            'channel_id': channel_id
+            'token':      userDoc.oauth
+          method: "POST",
+            (err, response, body) ->
+              if err
+                console.log err
+              else
+                Slips.findOneAndUpdate
+                  configName: file
+                  team_id:    team_id,
+                    updatedAt: new Date()
+
+execute = (text, team_id, channel_id, response_url, userDoc) ->
+  command = text.split(/ (.+)/)[1]
+  Containers.findOne
+    channel_id: channel_id,
+      (err, data) ->
+        host = data.host
+        request
+          #url: "http://#{host}/exec"
+          url:    "http://localhost:1515/exec"
+          json:   true
+          headers:
+            'content-type': 'application/json'
+          body:
+            'command': command
+            'response_url': response_url
+          method: "POST",
+            (err, response, body) ->
+              if err
+                console.log err
+
+commit = (text, team_id, channel_id, response_url, userDoc) ->
+  command = text.split(' ')[1]
+  file    = text.split(' ')[2]
+  switch command
+    when "slip"
+      request
+        url: "https://slack.com/api/files.list"
+        qs:
+          token:    userDoc.oauth
+          channel:  channel_id
+        method: "POST",
+          (err, response, body) ->
+            result  = JSON.parse(body)
+            downUrl = result.files[0].url_private
+            headers =
+              Authorization: "Bearer #{userDoc.oauth}"
+            request
+              url:      downUrl
+              headers:  headers
+              method:   "GET",
+                (err, response, body) ->
+                  params =
+                    Bucket:           "testing-krate-slips"
+                    Key:              "#{team_id}/#{file}.json"
+                    ACL:              "private"
+                    Body:             body
+                    ContentLanguage:  "JSON"
+                  s3.putObject params, (err, res) ->
+                    if err
+                      console.log err
+                    else
+                      Slips.findOneAndUpdate
+                        team_id:    team_id
+                        configName: file,
+                          updatedAt: new Date()
+                      .exec()
+                      respond
+                        "text": "Slip #{file} saved successfully."
+                        "username": "Krate"
+                        response_url
+
+    when "file"
+      request
+        url: "https://slack.com/api/files.list"
+        qs:
+          token:    userDoc.oauth
+          channel:  channel_id
+        method: "POST",
+          (err, response, body) ->
+            result  = JSON.parse(body)
+            downUrl = result.files[0].url_private
+            Containers.findOne
+              channel_id: channel_id,
+                (err, data) ->
+                  host = data.host
+                  request
+                    #url: "http://#{host}/commit"
+                    url:  "http://localhost:1515/commit"
+                    json: true
+                    headers:
+                      'content-type': 'application/json'
+                    body:
+                      url:          downUrl
+                      file:         file
+                      token:        userDoc.oauth
+                      response_url: response_url
+                    method: "POST",
+                      (err, response, body) ->
+                        if err
+                          console.log err
+
+    else
+      respond
+        "text": "Unknown command. Use [help] for usage."
+        "username": "Krate"
