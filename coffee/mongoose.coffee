@@ -41,7 +41,8 @@ slipsSchema = new Schema
 
 Slips = mongoose.model 'Slips', slipsSchema
 
-export {Account, Containers, Slips}
+`module.exports = {Account, Containers, Slips}`
+
 
 containersSchema.pre 'save', (next) ->
   this.startTime = new Date()

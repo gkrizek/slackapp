@@ -43,44 +43,50 @@ app.get '/oauth', (req, res) ->
         code: req.query.code
         client_id: client_id
         client_secret: client_secret
-      method: 'GET', (err, res, body) ->
+      method: 'GET', (err, response, body) ->
         if err
           console.log(err)
         else
-          exist = Account.count
-                    team_id: body.team_id
-          if exist > 0
-            result    = JSON.parse body
-            id        = randomstring.generate()
-            oauth     = result.access_token
-            team_name = result.team_name
-            team_id   = result.team_id
-            Account.findOneAndUpdate
-              team_id: team_id,
-                oauth: oauth
-                active: true
-            .exec()
-          else
-            result      = JSON.parse body
-            id          = randomstring.generate()
-            oauth       = result.access_token
-            team_name   = result.team_name
-            team_id     = result.team_id
-            newAccount  = Account
-              _id: id
-              team_id: team_id
-              team_name: team_name
-              active: true
-              accepted: false
-              krateToken: null
-              oauth: oauth
-              plan: 0
-              maxAllowedCont: 0
-              runningCont: 0
-              containers: []
-              slips: []
-              createdAt: new Date()
-            newAccount.save()
+          result    = JSON.parse body
+          team_id   = result.team_id
+          exist   = Account.count
+            team_id: team_id,
+              (err, data) ->
+                if err
+                  console.log err
+                else
+                  if data > 0
+                    result    = JSON.parse body
+                    id        = randomstring.generate()
+                    oauth     = result.access_token
+                    team_name = result.team_name
+                    team_id   = result.team_id
+                    Account.findOneAndUpdate
+                      team_id: team_id,
+                        oauth: oauth
+                        active: true
+                    .exec()
+                  else
+                    result      = JSON.parse body
+                    id          = randomstring.generate()
+                    oauth       = result.access_token
+                    team_name   = result.team_name
+                    team_id     = result.team_id
+                    newAccount  = Account
+                      _id: id
+                      team_id: team_id
+                      team_name: team_name
+                      active: true
+                      accepted: false
+                      krateToken: null
+                      oauth: oauth
+                      plan: 0
+                      maxAllowedCont: 0
+                      runningCont: 0
+                      containers: []
+                      slips: []
+                      createdAt: new Date()
+                    newAccount.save()
           res.redirect 'https://google.com'
 
 app.post '/message_action', (req, res) ->
@@ -147,7 +153,7 @@ app.post '/command', (req, res) ->
               "text": "It looks like your account is not active. Please login to your account at https://krate.sh/login to find out why."
               "username": "Krate"
           else
-            switch command.toLowerCase
+            switch command.toLowerCase()
               when "configure"
                 if helpCheck is "help"
                   res.send
@@ -283,12 +289,12 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
             id            = randomstring.generate
             container_id  = randomstring.generate
             newCont       = Containers
-                              _id:          id
-                              container_id: containerId
-                              host:         '10.5.5.1'
-                              slip:         slip
-                              team_id:      team_id
-                              channel_id:   [channel_id]
+              _id:          id
+              container_id: containerId
+              host:         '10.5.5.1'
+              slip:         slip
+              team_id:      team_id
+              channel_id:   [channel_id]
             newCont.save (err, data) ->
               if err
                 console.log err
@@ -458,7 +464,7 @@ slip = (text, team_id, channel_id, response_url, userDoc) ->
             ContentLanguage: "JSON"
       s3.putObject params, (err, res) ->
         if err
-          log err
+          console.log err
           respond
             "text": "There was a problem creating a slip."
             "username": "Krate"
@@ -486,12 +492,12 @@ slip = (text, team_id, channel_id, response_url, userDoc) ->
                           console.log err
                         else
                           newSlip = Slips
-                                      _id:        id
-                                      configName: filename
-                                      url:        s3Url
-                                      team_id:    team_id
-                                      createdAt:  new Date()
-                                      updatedAt:  new Date()
+                            _id:        id
+                            configName: filename
+                            url:        s3Url
+                            team_id:    team_id
+                            createdAt:  new Date()
+                            updatedAt:  new Date()
                           newSlip.save (err, res) ->
                             if err
                               console.log err
