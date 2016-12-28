@@ -20,10 +20,10 @@ app = express()
 port = 8080
 
 s3 = new S3
-  region: "us-west-2"
+  region: 'us-west-2'
   credentials:
     accessKeyId: awsKey
-    secrectAccessKey: awsSecret
+    secretAccessKey: awsSecret
 
 app.listen port
 
@@ -256,7 +256,7 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
           "username": "Krate"
           response_url
       else
-        #does this properly find string in array of objects
+        #THIS DOES NOT CORRECTLY FIND
         if channel_id in userDoc.containers
           for i in userDoc.containers
             if userDoc.containers[i].channel_id is channel_id
@@ -286,11 +286,11 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
               "username": "Krate"
               response_url
           else
-            id            = randomstring.generate
-            container_id  = randomstring.generate
+            id            = randomstring.generate()
+            container_id  = randomstring.generate 10
             newCont       = Containers
               _id:          id
-              container_id: containerId
+              container_id: container_id
               host:         '10.5.5.1'
               slip:         slip
               team_id:      team_id
@@ -483,7 +483,7 @@ slip = (text, team_id, channel_id, response_url, userDoc) ->
                     url: "https://slack.com/api/files.upload"
                     qs:
                       token:    token
-                      filename: filename
+                      filename: "#{filename}.json"
                       channels: channel_id
                       content:  file
                     method: 'POST',
@@ -493,7 +493,7 @@ slip = (text, team_id, channel_id, response_url, userDoc) ->
                         else
                           newSlip = Slips
                             _id:        id
-                            configName: filename
+                            config_name: filename
                             url:        s3Url
                             team_id:    team_id
                             createdAt:  new Date()
@@ -509,12 +509,14 @@ slip = (text, team_id, channel_id, response_url, userDoc) ->
                               .exec()
 
     when "edit"
+      #check if slip is in their Mongo document first
       slip    = text.split(' ')[2]
       token   = userDoc.oauth
+      team_id = userDoc.team_id
       params  =
             Bucket: "testing-krate-slips"
             Key: "#{team_id}/#{slip}.json"
-      s3.getObject params (err, res) ->
+      s3.getObject params, (err, res) ->
         if err
           console.log err
         else
@@ -532,7 +534,7 @@ slip = (text, team_id, channel_id, response_url, userDoc) ->
 
     when "delete"
       slip = text.split(' ')[2]
-      if slip in userDoc
+      if slip in userDoc.slips
         respond
           "text": "Are you sure you want to delete #{slip}?"
           "attachments": [
@@ -552,7 +554,7 @@ slip = (text, team_id, channel_id, response_url, userDoc) ->
                 "value": slip
             ]
           ]
-        response_url
+          response_url
       else
         respond
           "text": "That slip doesn't exist."
@@ -766,12 +768,13 @@ deleteSlip = (slip, team_id, channel_id, response_url) ->
           console.log err
         else
           Slips.findOne
-            configName: slip
+            config_name: slip
             team_id:    team_id
           .remove().exec()
           respond
             "text": "Deleted slip '#{slip}'."
             "username": "Krate"
+            response_url
 
 respond = (body, response_url) ->
   request
