@@ -137,7 +137,7 @@ app.post '/command', (req, res) ->
     channel_id    = req.body.channel_id
     team_id       = req.body.team_id
     command       = text.split(' ')[0]
-    if text.split(' ')[1] then helpCheck = text.split(' ')[1].toLowerCase
+    if text.split(' ')[1] then helpCheck = text.split(' ')[1].toLowerCase()
     Account.findOne
       team_id: team_id, (err, data) ->
         if err
@@ -256,20 +256,21 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
           "username": "Krate"
           response_url
       else
-        #THIS DOES NOT CORRECTLY FIND
-        if channel_id in userDoc.containers
-          for i in userDoc.containers
-            if userDoc.containers[i].channel_id is channel_id
-              respond
-                "text": "Current running container: #{userDoc.containers[i].container_id}"
-                "username": "Krate"
-                response_url
-              break
-        else
+        myCont = {}
+        for cont in userDoc.containers
+          myCont[cont.channel_id] = cont.container_id
+        contId = myCont[channel_id]
+        if contId is undefined
           respond
             "text": "There are no running containers in this channel."
             "username": "Krate"
             response_url
+        else
+          respond
+            "text": "Current running container: #{contId}"
+            "username": "Krate"
+            response_url
+          break
 
     when "start"
       slip = text.split(' ')[2]
@@ -280,12 +281,11 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
           response_url
       else
         if slip in userDoc.slips
-          if channel_id in userDoc.containers
-            respond
-              "text": "There is already a container running in this channel. You must stop or detach that container before starting a new one."
-              "username": "Krate"
-              response_url
-          else
+          myCont = {}
+          for cont in userDoc.containers
+            myCont[cont.channel_id] = cont.container_id
+          contId = myCont[channel_id]
+          if contId is undefined
             id            = randomstring.generate()
             container_id  = randomstring.generate 10
             newCont       = Containers
@@ -313,9 +313,14 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
                           "text": "Starting Krate #{container_id}..."
                           "username": "Krate"
                           response_url
+          else
+            respond
+              "text": "There is already a container running in this channel. You must stop or detach that container before starting a new one."
+              "username": "Krate"
+              response_url
         else
           respond
-            "text": "I can't find that slip. Please make sure it's spelled correclt.y"
+            "text": "I can't find that slip. Please make sure it's spelled correctly."
             "username": "Krate"
             response_url
 
@@ -327,8 +332,17 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
           "username": "Krate"
           response_url
       else
-        if channel_id in userDoc.containers
-          if container and channel_id in userDoc.containers
+        myCont = {}
+        for cont in userDoc.containers
+          myCont[cont.channel_id] = cont.container_id
+        contId = myCont[channel_id]
+        if contId is undefined
+          respond
+            "text": "There are no running conatiners in this channel."
+            "username": "Krate"
+            response_url
+        else
+          if contId is container
             respond
               "text": "Are you sure you want to stop #{container}?"
               "attachments": [
@@ -345,20 +359,15 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
                     "name": "no"
                     "text": "Don't touch it!"
                     "type": "button"
-                    "value": containter
+                    "value": container
                 ]
               ]
               response_url
           else
             respond
-              "text": "That conatiner doesn't seem to be running in this channel"
+              "text": "That container doesn't appear to be running in this channel."
               "username": "Krate"
               response_url
-        else
-          respond
-            "text": "There are no running conatiners in this channel."
-            "username": "Krate"
-            response_url
 
     when "attach"
       container = text.split(' ')[2]
@@ -368,7 +377,7 @@ krate = (text, team_id, channel_id, response_url, userDoc) ->
           "username": "Krate"
           response_url
       else
-        Container.findOne
+        Containers.findOne
           container_id: container,
             (err, data) ->
               if err
@@ -744,7 +753,8 @@ stopCont = (container_id, team_id, channel_id, response_url) ->
             Account.findOneAndUpdate
               team_id: team_id,
                 $pull:
-                  container_id: container_id,
+                  containers:
+                    container_id: container_id,
                 (err, data) ->
                       if err
                         console.log err
@@ -755,6 +765,7 @@ stopCont = (container_id, team_id, channel_id, response_url) ->
                         respond
                           "text": "Container #{container_id} is stopped."
                           "username": "Krate"
+                          response_url
           else
             console.log 'This container is not in the channel requested'
 
