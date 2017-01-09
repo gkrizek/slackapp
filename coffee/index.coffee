@@ -128,6 +128,7 @@ app.post '/message_action', (req, res) ->
           "username": "Krate"
 
 app.post '/command', (req, res) ->
+  #add some git commands?
   slackToken = req.body.token
   if not slackToken or slackToken isnt verifyToken
     res.send 'This request doesn\'t seem to be coming from Slack.'
@@ -193,7 +194,7 @@ app.post '/command', (req, res) ->
                 else
                   res.send
                     "text": "Request received..."
-                  exec text, team_id, channel_id, response_url, userDoc
+                  execute text, team_id, channel_id, response_url, userDoc
               when "commit"
                 if helpCheck is "help"
                   res.send
@@ -518,28 +519,33 @@ slip = (text, team_id, channel_id, response_url, userDoc) ->
                               .exec()
 
     when "edit"
-      #check if slip is in their Mongo document first
       slip    = text.split(' ')[2]
       token   = userDoc.oauth
       team_id = userDoc.team_id
-      params  =
-            Bucket: "testing-krate-slips"
-            Key: "#{team_id}/#{slip}.json"
-      s3.getObject params, (err, res) ->
-        if err
-          console.log err
-        else
-          request
-            url: "https://slack.com/api/files.upload"
-            qs:
-              token: token
-              filename: "#{slip}.json"
-              channels: channel_id
-              content: res.Body.toString()
-            method: "POST",
-              (err, response, body) ->
-                if err
-                  console.log err
+      if slip in userDoc.slips
+        params  =
+              Bucket: "testing-krate-slips"
+              Key: "#{team_id}/#{slip}.json"
+        s3.getObject params, (err, res) ->
+          if err
+            console.log err
+          else
+            request
+              url: "https://slack.com/api/files.upload"
+              qs:
+                token: token
+                filename: "#{slip}.json"
+                channels: channel_id
+                content: res.Body.toString()
+              method: "POST",
+                (err, response, body) ->
+                  if err
+                    console.log err
+      else
+        respond
+          "text": "I couldn't find that slip"
+          "username": "Krate"
+          response_url
 
     when "delete"
       slip = text.split(' ')[2]
@@ -603,6 +609,7 @@ edit = (text, team_id, channel_id, response_url, userDoc) ->
                     updatedAt: new Date()
 
 execute = (text, team_id, channel_id, response_url, userDoc) ->
+  # Need to give proper response if no container running.
   command = text.split(/ (.+)/)[1]
   Containers.findOne
     channel_id: channel_id,
@@ -697,6 +704,7 @@ commit = (text, team_id, channel_id, response_url, userDoc) ->
       respond
         "text": "Unknown command. Use [help] for usage."
         "username": "Krate"
+        response_url
 
 show = (text, team_id, channel_id, response_url, userDoc) ->
   file  = text.split(' ')[1]

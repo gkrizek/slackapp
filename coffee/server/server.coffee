@@ -3,6 +3,8 @@ request     = require 'request'
 bodyParser  = require 'body-parser'
 {exec}      = require 'child_process'
 fs          = require 'fs'
+S3          = require 'aws-sdk/clients/s3'
+
 
 awsKey      = process.env.AWS_KEY
 awsSecret   = process.env.AWS_SECRET
@@ -54,7 +56,7 @@ app.post '/exec', (req, res) ->
         "username": "Krate"
         "attachments": [
           "text": "```#{stdout}```"
-          "color": "#ff0000"
+          "color": "#00ff00"
           "mrkdwn_in": [
             "text"
           ]
@@ -79,7 +81,12 @@ app.post '/edit', (req, res) ->
           content:  data
         method: "POST",
           (err, response, body) ->
-            console.log JSON.parse(body)
+            if err
+              console.log err
+            else
+              console.log response
+              console.log body
+  res.send 'OK'
 
 app.post '/commit', (req, res) ->
   url           = req.body.url
@@ -103,6 +110,7 @@ app.post '/commit', (req, res) ->
               respond
                 "text": "File #{file} was successfully saved."
                 "username": "Krate"
+                response_url
 
 app.post '/show', (req, res) ->
   start         = req.body.start
@@ -137,7 +145,7 @@ app.post '/show', (req, res) ->
         "username": "Krate"
         "attachments": [
           "text": "```#{stdout}```"
-          "color": "#ff0000"
+          "color": "#00ff00"
           "mrkdwn_in": [
             "text"
           ]
