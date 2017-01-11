@@ -587,47 +587,60 @@ edit = (text, team_id, channel_id, response_url, userDoc) ->
   Containers.findOne
     channel_id: channel_id,
       (err, data) ->
-        host = data.host
-        request
-          #url: "http://#{host}/edit"
-          url: "http://localhost:1515/edit"
-          json: true
-          headers:
-            'content-type': 'application/json'
-          body:
-            'file':       file
-            'channel_id': channel_id
-            'token':      userDoc.oauth
-          method: "POST",
-            (err, response, body) ->
-              if err
-                console.log err
-              else
-                Slips.findOneAndUpdate
-                  configName: file
-                  team_id:    team_id,
-                    updatedAt: new Date()
+        if data
+          host = data.host
+          request
+            #url: "http://#{host}/edit"
+            url: "http://localhost:1515/edit"
+            json: true
+            headers:
+              'content-type': 'application/json'
+            body:
+              'file':       file
+              'channel_id': channel_id
+              'token':      userDoc.oauth
+            method: "POST",
+              (err, response, body) ->
+                if err
+                  console.log err
+                else
+                  Slips.findOneAndUpdate
+                    configName: file
+                    team_id:    team_id,
+                      updatedAt: new Date()
+        else
+          respond
+            "text": "There doesn't appear to be a container running in this channel."
+            "username": "Krate"
+            response_url
+
 
 execute = (text, team_id, channel_id, response_url, userDoc) ->
-  # Need to give proper response if no container running.
   command = text.split(/ (.+)/)[1]
   Containers.findOne
     channel_id: channel_id,
       (err, data) ->
-        host = data.host
-        request
-          #url: "http://#{host}/exec"
-          url:    "http://localhost:1515/exec"
-          json:   true
-          headers:
-            'content-type': 'application/json'
-          body:
-            'command': command
-            'response_url': response_url
-          method: "POST",
-            (err, response, body) ->
-              if err
-                console.log err
+        if data
+          host = data.host
+          request
+            #url: "http://#{host}/exec"
+            url:    "http://localhost:1515/exec"
+            json:   true
+            headers:
+              'content-type': 'application/json'
+            body:
+              'command': command
+              'response_url': response_url
+            method: "POST",
+              (err, response, body) ->
+                if err
+                  console.log err
+        else
+          respond
+            "text": "There doesn't appear to be a container running in this channel."
+            "username": "Krate"
+            response_url
+
 
 commit = (text, team_id, channel_id, response_url, userDoc) ->
   command = text.split(' ')[1]
@@ -683,23 +696,28 @@ commit = (text, team_id, channel_id, response_url, userDoc) ->
             Containers.findOne
               channel_id: channel_id,
                 (err, data) ->
-                  host = data.host
-                  request
-                    #url: "http://#{host}/commit"
-                    url:  "http://localhost:1515/commit"
-                    json: true
-                    headers:
-                      'content-type': 'application/json'
-                    body:
-                      url:          downUrl
-                      file:         file
-                      token:        userDoc.oauth
-                      response_url: response_url
-                    method: "POST",
-                      (err, response, body) ->
-                        if err
-                          console.log err
-
+                  if data
+                    host = data.host
+                    request
+                      #url: "http://#{host}/commit"
+                      url:  "http://localhost:1515/commit"
+                      json: true
+                      headers:
+                        'content-type': 'application/json'
+                      body:
+                        url:          downUrl
+                        file:         file
+                        token:        userDoc.oauth
+                        response_url: response_url
+                      method: "POST",
+                        (err, response, body) ->
+                          if err
+                            console.log err
+                  else
+                    respond
+                      "text": "There doesn't appear to be a container running in this channel."
+                      "username": "Krate"
+                      response_url
     else
       respond
         "text": "Unknown command. Use [help] for usage."
@@ -714,41 +732,55 @@ show = (text, team_id, channel_id, response_url, userDoc) ->
   Containers.findOne
     channel_id: channel_id,
       (err, data) ->
-        host = data.host
-        request
-          #url: "http://#{host}/show"
-          url: "http://localhost:1515/show"
-          json: true
-          headers:
-            'content-type': 'application/json'
-          body:
-            file:         file
-            start:        start
-            end:          end
-            response_url: response_url
-          method: "POST",
-            (err, response, body) ->
-              if err
-                console.log err
+        if data
+          host = data.host
+          request
+            #url: "http://#{host}/show"
+            url: "http://localhost:1515/show"
+            json: true
+            headers:
+              'content-type': 'application/json'
+            body:
+              file:         file
+              start:        start
+              end:          end
+              response_url: response_url
+            method: "POST",
+              (err, response, body) ->
+                if err
+                  console.log err
+        else
+          respond
+            "text": "There doesn't appear to be a container running in this channel."
+            "username": "Krate"
+            response_url
+
 
 exportCmd = (text, team_id, channel_id, response_url, userDoc) ->
   Containers.findOne
     channel_id: channel_id,
       (err, data) ->
-        host = data.host
-        request
-          #url: "http://#{host}/export"
-          url: "http://localhost:1515/export"
-          json: true
-          headers:
-            'content-type': 'application/json'
-          body:
-            container: data.container_id
-            response_url: response_url
-          method: "POST",
-            (err, response, body) ->
-              if err
-                console.log err
+        if data
+          host = data.host
+          request
+            #url: "http://#{host}/export"
+            url: "http://localhost:1515/export"
+            json: true
+            headers:
+              'content-type': 'application/json'
+            body:
+              container_id: data.container_id
+              response_url: response_url
+            method: "POST",
+              (err, response, body) ->
+                if err
+                  console.log err
+        else
+          respond
+            "text": "There doesn't appear to be a container running in this channel."
+            "username": "Krate"
+            response_url
+
 
 stopCont = (container_id, team_id, channel_id, response_url) ->
   Containers.findOne

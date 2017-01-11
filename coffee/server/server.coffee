@@ -84,9 +84,9 @@ app.post '/edit', (req, res) ->
             if err
               console.log err
             else
-              console.log response
-              console.log body
-  res.send 'OK'
+              #console.log response
+              #console.log body
+              res.send 'OK'
 
 app.post '/commit', (req, res) ->
   url           = req.body.url
@@ -154,8 +154,8 @@ app.post '/show', (req, res) ->
       res.send 'OK'
 
 app.post '/export', (req, res) ->
-  response_url  = res.body.response_url
-  container_id  = res.body.container_id
+  response_url  = req.body.response_url
+  container_id  = req.body.container_id
   command       = "tar -zcvf /tmp/#{container_id}.tgz ./"
   exec command, (error, stdout, stderr) ->
     if stderr
